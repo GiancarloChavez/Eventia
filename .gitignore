@@ -33,3 +33,8 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+.gstack/
+
+# Design bundle (development artifact)
+design_bundle/
+design_prototype.html
