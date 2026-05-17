@@ -1,0 +1,28 @@
+{
+  "effortLevel": "high",
+  "enabledPlugins": {
+    "vercel@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "PowerShell(*)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__claude_ai_Canva__*",
+      "mcp__claude_ai_Figma__*",
+      "mcp__claude_ai_Gmail__*",
+      "mcp__claude_ai_Google_Calendar__*",
+      "mcp__claude_ai_Google_Drive__*",
+      "mcp__claude_ai_Supabase__*",
+      "mcp__plugin_vercel_vercel__*",
+      "mcp__ide__*"
+    ],
+    "deny": []
+  }
+}
