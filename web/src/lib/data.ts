@@ -2,35 +2,43 @@ export type Category = "local" | "fotografia" | "musica" | "decoracion";
 
 export type ServiceStatus = "Pendiente" | "Confirmado" | "Completado" | "Cancelado";
 
-export interface Review {
-  author: string;
-  date: string;
-  rating: number;
-  text: string;
+/** Forma que devuelve Supabase al hacer el select con joins */
+export interface DbService {
+  id: string;
+  title: string;
+  description: string | null;
+  base_price: number | null;
+  location: string | null;
+  capacity_min: number | null;
+  capacity_max: number | null;
+  category_id: number;
+  status: string;
+  category: { name: string; slug: string } | null;
+  provider: { business_name: string; status: string } | null;
+  images: { url: string; is_cover: boolean; display_order: number }[];
 }
 
-export interface Service {
-  id: number;
-  name: string;
-  category: Category;
-  categoryLabel: string;
-  provider: string;
-  verified: boolean;
-  rating: number;
-  reviews: number;
-  price: number;
-  city: string;
-  description: string;
-  shortDesc: string;
-  capacity: { min: number; max: number };
-  images: string[];
-  tags: string[];
-  availability: string;
-  includes: string[];
-  reviews_list: Review[];
-}
+/** Fragmento de select reutilizable en queries de servicios */
+export const SERVICE_SELECT = `
+  id,
+  title,
+  description,
+  base_price,
+  location,
+  capacity_min,
+  capacity_max,
+  category_id,
+  status,
+  category:service_categories(name, slug),
+  provider:providers(business_name, status),
+  images:service_images(url, is_cover, display_order)
+` as const;
 
-export const ALL_SERVICES: Service[] = [
+// --- datos estáticos que sí permanecen ---
+
+// Placeholder para mantener compatibilidad durante la migración
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const ALL_SERVICES: any[] = [
   {
     id: 1,
     name: "Salón Grand Imperial",
@@ -282,6 +290,7 @@ export const PERUVIAN_CITIES = [
   "Huancayo",
 ];
 
-export function formatPrice(price: number): string {
+export function formatPrice(price: number | null | undefined): string {
+  if (price == null) return "Cotizar";
   return `S/ ${price.toLocaleString("es-PE")}`;
 }

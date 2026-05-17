@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, ChevronLeft, ChevronRight, MapPin, Calendar, Users, Camera, Music, Sparkles, Building2, Tag, SlidersHorizontal, X } from "lucide-react";
-import { ALL_SERVICES, PERUVIAN_CITIES, type Category } from "@/lib/data";
+import { PERUVIAN_CITIES, SERVICE_SELECT, type Category, type DbService } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
 import { ServiceCard } from "@/components/shared/service-card";
 
 /* ─── Category hero configs ─────────────────────────────────────────── */
@@ -89,6 +90,8 @@ export default function CatalogPage() {
   const [sortBy, setSortBy] = useState("relevancia");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [services, setServices] = useState<DbService[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -100,22 +103,45 @@ export default function CatalogPage() {
 
   useEffect(() => { setPage(1); }, [category, maxPrice, minRating, sortBy, city]);
 
+  useEffect(() => {
+    async function fetchServices() {
+      setLoading(true);
+      let query = supabase
+        .from("services")
+        .select(SERVICE_SELECT)
+        .eq("status", "active");
+
+      if (category) {
+        const { data: cat } = await supabase
+          .from("service_categories")
+          .select("id")
+          .eq("slug", category)
+          .single();
+        if (cat) query = query.eq("category_id", cat.id);
+      }
+
+      if (city) query = query.eq("location", city);
+
+      const { data } = await query;
+      setServices((data as unknown as DbService[]) ?? []);
+      setLoading(false);
+    }
+    fetchServices();
+  }, [category, city]);
+
   const heroKey = (category as CatKey) || "todos";
   const hero = HERO_CONFIG[heroKey];
   const Field3Icon = hero.field3Icon;
 
   const filtered = useMemo(() => {
-    let list = ALL_SERVICES.filter((s) => {
-      if (category && s.category !== category) return false;
-      if (s.price > maxPrice) return false;
-      if (s.rating < minRating) return false;
+    let list = services.filter((s) => {
+      if (s.base_price != null && s.base_price > maxPrice) return false;
       return true;
     });
-    if (sortBy === "precio-asc") list = [...list].sort((a, b) => a.price - b.price);
-    if (sortBy === "precio-desc") list = [...list].sort((a, b) => b.price - a.price);
-    if (sortBy === "calificacion") list = [...list].sort((a, b) => b.rating - a.rating);
+    if (sortBy === "precio-asc") list = [...list].sort((a, b) => (a.base_price ?? 0) - (b.base_price ?? 0));
+    if (sortBy === "precio-desc") list = [...list].sort((a, b) => (b.base_price ?? 0) - (a.base_price ?? 0));
     return list;
-  }, [category, maxPrice, minRating, sortBy]);
+  }, [services, maxPrice, sortBy]);
 
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -347,25 +373,24 @@ export default function CatalogPage() {
                 </div>
               </div>
 
-              {/* Rating */}
+              {/* Ciudad */}
               <div>
-                <div className="text-gray-700 text-[12px] font-bold uppercase tracking-[0.8px] mb-3">Calificación mínima</div>
-                <div className="flex flex-col gap-2">
-                  {[{ v: 0, l: "Cualquiera" }, { v: 4, l: "4+ estrellas" }, { v: 4.5, l: "4.5+ ★" }, { v: 4.8, l: "4.8+ ★" }].map((r) => (
-                    <label key={r.v} className="flex items-center gap-2 cursor-pointer" onClick={() => setMinRating(r.v)}>
-                      <div className="w-4 h-4 rounded-full border flex items-center justify-center" style={{ borderColor: minRating === r.v ? "#f39e10" : "#e5e7eb" }}>
-                        {minRating === r.v && <div className="w-2 h-2 rounded-full bg-[#f39e10]" />}
-                      </div>
-                      <span className="text-[13px]" style={{ color: minRating === r.v ? "#111827" : "#6b7280" }}>{r.l}</span>
-                    </label>
-                  ))}
-                </div>
+                <div className="text-gray-700 text-[12px] font-bold uppercase tracking-[0.8px] mb-3">Ciudad</div>
+                <select
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] outline-none bg-white cursor-pointer"
+                  style={{ color: city ? "#111827" : "#9ca3af" }}
+                >
+                  <option value="">Todas las ciudades</option>
+                  {PERUVIAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
 
               {/* Reset */}
               <div className="flex items-end">
                 <button
-                  onClick={() => { setMaxPrice(20000); setMinRating(0); setShowFilters(false); }}
+                  onClick={() => { setMaxPrice(20000); setCity(""); setShowFilters(false); }}
                   className="flex items-center gap-1.5 text-gray-500 text-[13px] hover:text-[#f39e10] transition-colors cursor-pointer"
                 >
                   <X size={14} /> Limpiar filtros
@@ -375,11 +400,16 @@ export default function CatalogPage() {
           )}
 
           {/* Results grid */}
-          {paginated.length === 0 ? (
+          {loading ? (
             <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
-              <div className="text-gray-300 text-[48px] mb-3">🔍</div>
-              <h3 className="text-gray-700 font-bold text-[18px] mb-1">Sin resultados</h3>
-              <p className="text-gray-400 text-[14px]">Prueba ajustando los filtros de búsqueda.</p>
+              <div className="w-8 h-8 border-2 border-[#f39e10] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-gray-400 text-[14px]">Buscando servicios...</p>
+            </div>
+          ) : paginated.length === 0 ? (
+            <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
+              <div className="text-5xl mb-4">🎪</div>
+              <h3 className="text-gray-700 font-bold text-[18px] mb-2">Aún no hay servicios disponibles</h3>
+              <p className="text-gray-400 text-[14px]">Pronto los mejores proveedores del Perú estarán aquí.</p>
             </div>
           ) : (
             <>

@@ -130,7 +130,7 @@ export function Navbar() {
         {/* Right actions */}
         <div className="flex items-center gap-1 shrink-0 pl-2">
           <Link
-            href="/proveedor"
+            href="/auth/registro?tipo=proveedor"
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium whitespace-nowrap"
             style={{
               color: heroMode ? "rgba(255,255,255,0.82)" : "#6b7280",
@@ -142,25 +142,25 @@ export function Navbar() {
           </Link>
 
           <Link
-            href="/cliente"
+            href="/auth/login"
             className="px-3.5 py-2 rounded-lg text-[13px] font-medium whitespace-nowrap"
             style={{
               color: heroMode ? "rgba(255,255,255,0.82)" : "#6b7280",
               transition: "color 200ms ease, background 150ms ease",
             }}
           >
-            Mis reservas
+            Iniciar sesión
           </Link>
 
           <Link
-            href="/cliente"
+            href="/auth"
             className="flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-bold text-white ml-2"
             style={{
               background: "linear-gradient(135deg, #f59e0b 0%, #f39e10 55%, #e88e00 100%)",
               boxShadow: "0 4px 20px rgba(243,158,16,0.45), inset 0 1px 0 rgba(255,255,255,0.22)",
             }}
           >
-            Iniciar sesión
+            Registrarse
           </Link>
         </div>
       </div>

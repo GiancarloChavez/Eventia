@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Calendar, Check, Star } from "lucide-react";
-import { ALL_SERVICES, formatPrice } from "@/lib/data";
+import { SERVICE_SELECT, formatPrice, type DbService } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
 import { StarRating } from "@/components/shared/star-rating";
 import { CategoryBadge } from "@/components/shared/category-badge";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
@@ -13,14 +14,71 @@ import { ServiceCard } from "@/components/shared/service-card";
 export default function DetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = Number(params.id);
-  const service = ALL_SERVICES.find((s) => s.id === id) ?? ALL_SERVICES[0];
+  const id = params.id as string;
+
+  const [service, setService] = useState<DbService | null>(null);
+  const [related, setRelated] = useState<DbService[]>([]);
   const [activeImg, setActiveImg] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const related = ALL_SERVICES.filter((s) => s.category === service.category && s.id !== service.id).slice(0, 3);
   const today = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    async function fetchService() {
+      setLoading(true);
+      const { data } = await supabase
+        .from("services")
+        .select(SERVICE_SELECT)
+        .eq("id", id)
+        .single();
+
+      const svc = data as unknown as DbService | null;
+      setService(svc);
+
+      if (svc) {
+        const { data: rel } = await supabase
+          .from("services")
+          .select(SERVICE_SELECT)
+          .eq("status", "active")
+          .eq("category_id", svc.category_id)
+          .neq("id", id)
+          .limit(3);
+        setRelated((rel as unknown as DbService[]) ?? []);
+      }
+      setLoading(false);
+    }
+    fetchService();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="bg-[#f4f5f7] min-h-screen flex items-center justify-center pt-[72px]">
+        <div className="w-10 h-10 border-2 border-[#f39e10] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!service) {
+    return (
+      <div className="bg-[#f4f5f7] min-h-screen flex items-center justify-center pt-[72px]">
+        <div className="text-center">
+          <p className="text-gray-500 text-[16px] mb-4">Servicio no encontrado.</p>
+          <Link href="/catalogo" className="text-[#f39e10] font-semibold hover:underline">
+            Ver catálogo
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const sortedImages = [...service.images].sort((a, b) => a.display_order - b.display_order);
+  const imageUrls = sortedImages.map((i) => i.url);
+  const coverUrl = imageUrls[0] ?? "https://picsum.photos/seed/evdefault/800/520";
+  const isVerified = service.provider?.status === "approved";
+  const categoryLabel = service.category?.name ?? "";
+  const providerName = service.provider?.business_name ?? "Proveedor";
 
   if (showConfirm) {
     return (
@@ -31,7 +89,7 @@ export default function DetailPage() {
           </div>
           <h2 className="text-gray-900 text-[24px] font-black mb-3">¡Reserva enviada!</h2>
           <p className="text-gray-500 text-[15px] leading-relaxed mb-1.5">
-            Tu solicitud para <strong className="text-gray-900">{service.name}</strong> fue enviada exitosamente.
+            Tu solicitud para <strong className="text-gray-900">{service.title}</strong> fue enviada exitosamente.
           </p>
           <p className="text-gray-500 text-[14px] mb-7">
             El proveedor confirmará en las próximas <strong className="text-[#f39e10]">24 horas</strong>.
@@ -64,27 +122,27 @@ export default function DetailPage() {
           <span className="text-gray-300">›</span>
           <Link href="/catalogo" className="text-gray-500 text-[13px] hover:text-[#f39e10]">Catálogo</Link>
           <span className="text-gray-300">›</span>
-          <span className="text-gray-900 text-[13px] font-semibold">{service.name}</span>
+          <span className="text-gray-900 text-[13px] font-semibold">{service.title}</span>
         </div>
       </div>
 
       <div className="px-10 py-7">
         <div className="grid gap-9 items-start" style={{ gridTemplateColumns: "1fr 360px" }}>
-          {/* Left: Gallery + Info + Reviews */}
+          {/* Left */}
           <div>
             {/* Gallery */}
             <div className="rounded-2xl overflow-hidden mb-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={service.images[activeImg]}
-                alt={service.name}
+                src={imageUrls[activeImg] ?? coverUrl}
+                alt={service.title}
                 className="w-full object-cover"
                 style={{ height: 400 }}
               />
             </div>
-            {service.images.length > 1 && (
+            {imageUrls.length > 1 && (
               <div className="flex gap-2.5 mb-7">
-                {service.images.map((img, i) => (
+                {imageUrls.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
@@ -100,107 +158,69 @@ export default function DetailPage() {
 
             {/* Badges + title */}
             <div className="flex gap-2 flex-wrap mb-3">
-              <CategoryBadge label={service.categoryLabel} />
-              {service.verified && <VerifiedBadge />}
+              {categoryLabel && <CategoryBadge label={categoryLabel} />}
+              {isVerified && <VerifiedBadge />}
             </div>
-            <h1 className="text-gray-900 text-[28px] font-black mb-2.5 tracking-[-0.5px]">{service.name}</h1>
+            <h1 className="text-gray-900 text-[28px] font-black mb-2.5 tracking-[-0.5px]">{service.title}</h1>
             <div className="flex gap-4 items-center flex-wrap mb-5">
-              <StarRating value={service.rating} reviews={service.reviews} size={15} />
-              <span className="text-gray-300">·</span>
-              <span className="text-gray-500 text-[13px] flex items-center gap-1">
-                <MapPin size={13} /> {service.city}
-              </span>
-              <span className="text-gray-300">·</span>
-              <span className="text-gray-500 text-[13px]">
-                Capacidad: <strong className="text-gray-900">{service.capacity.min}–{service.capacity.max} personas</strong>
-              </span>
+              <StarRating value={0} reviews={0} size={15} />
+              {service.location && (
+                <>
+                  <span className="text-gray-300">·</span>
+                  <span className="text-gray-500 text-[13px] flex items-center gap-1">
+                    <MapPin size={13} /> {service.location}
+                  </span>
+                </>
+              )}
+              {(service.capacity_min || service.capacity_max) && (
+                <>
+                  <span className="text-gray-300">·</span>
+                  <span className="text-gray-500 text-[13px]">
+                    Capacidad: <strong className="text-gray-900">
+                      {service.capacity_min}–{service.capacity_max} personas
+                    </strong>
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Provider card */}
             <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-4 mb-6">
               <div className="w-11 h-11 rounded-full bg-[rgba(243,158,16,0.08)] flex items-center justify-center shrink-0">
-                <span className="text-[#f39e10] font-black text-[18px]">{service.provider[0]}</span>
+                <span className="text-[#f39e10] font-black text-[18px]">{providerName[0]}</span>
               </div>
               <div className="flex-1">
-                <div className="text-gray-900 font-bold text-[14px]">{service.provider}</div>
-                <div className="text-gray-500 text-[12px]">Proveedor de {service.categoryLabel}</div>
+                <div className="text-gray-900 font-bold text-[14px]">{providerName}</div>
+                {categoryLabel && <div className="text-gray-500 text-[12px]">Proveedor de {categoryLabel}</div>}
               </div>
-              {service.verified && <VerifiedBadge />}
+              {isVerified && <VerifiedBadge />}
             </div>
 
             {/* Description */}
             <h2 className="text-gray-900 text-[17px] font-bold mb-2.5">Descripción</h2>
-            <p className="text-gray-700 text-[14px] leading-[1.8] mb-6">{service.description}</p>
+            <p className="text-gray-700 text-[14px] leading-[1.8] mb-6">{service.description ?? "Sin descripción disponible."}</p>
 
-            {/* Includes */}
-            <h2 className="text-gray-900 text-[17px] font-bold mb-3">¿Qué incluye?</h2>
-            <div className="grid grid-cols-2 gap-2.5 mb-7">
-              {service.includes.map((item) => (
-                <div
-                  key={item}
-                  className="flex items-center gap-2.5 bg-[rgba(243,158,16,0.08)] border border-[rgba(243,158,16,0.22)] rounded-lg px-3.5 py-2.5"
-                >
-                  <Check size={14} className="text-[#f39e10] shrink-0" />
-                  <span className="text-gray-700 text-[13px] font-medium">{item}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Tags */}
-            <div className="flex gap-2 flex-wrap mb-8">
-              {service.tags.map((t) => (
-                <span key={t} className="bg-gray-50 border border-gray-200 text-gray-500 rounded-full px-3 py-1 text-[12px]">{t}</span>
-              ))}
-            </div>
-
-            {/* Reviews */}
+            {/* Reviews placeholder */}
             <div className="border-t border-gray-200 pt-7">
               <div className="flex gap-6 items-center mb-6">
                 <div className="text-center shrink-0">
-                  <div className="text-gray-900 text-[48px] font-black leading-none">{service.rating}</div>
-                  <StarRating value={service.rating} showValue={false} size={15} />
-                  <div className="text-gray-500 text-[12px] mt-1">{service.reviews} reseñas</div>
+                  <div className="text-gray-900 text-[48px] font-black leading-none">—</div>
+                  <StarRating value={0} showValue={false} size={15} />
+                  <div className="text-gray-500 text-[12px] mt-1">Sin reseñas</div>
                 </div>
                 <div className="flex-1">
                   {[5, 4, 3, 2, 1].map((n) => (
                     <div key={n} className="flex items-center gap-2.5 mb-1.5">
                       <span className="text-gray-500 text-[12px] w-1.5">{n}</span>
                       <Star size={12} fill="#f59e0b" stroke="none" />
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-amber-400 rounded-full transition-all"
-                          style={{ width: n === 5 ? "78%" : n === 4 ? "16%" : n === 3 ? "4%" : "1%" }}
-                        />
-                      </div>
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full" />
                     </div>
                   ))}
                 </div>
               </div>
 
               <h2 className="text-gray-900 text-[17px] font-bold mb-4">Reseñas</h2>
-              {service.reviews_list.length === 0 ? (
-                <p className="text-gray-500 text-[14px]">Aún no hay reseñas. ¡Sé el primero!</p>
-              ) : (
-                <div className="flex flex-col gap-4">
-                  {service.reviews_list.map((r, i) => (
-                    <div key={i} className="bg-white border border-gray-200 rounded-xl p-5">
-                      <div className="flex justify-between items-start mb-2.5">
-                        <div className="flex gap-2.5 items-center">
-                          <div className="w-9 h-9 rounded-full bg-[rgba(243,158,16,0.08)] flex items-center justify-center">
-                            <span className="text-[#f39e10] font-black">{r.author[0]}</span>
-                          </div>
-                          <div>
-                            <div className="text-gray-900 font-bold text-[14px]">{r.author}</div>
-                            <div className="text-gray-500 text-[12px]">{r.date}</div>
-                          </div>
-                        </div>
-                        <StarRating value={r.rating} showValue={false} size={13} />
-                      </div>
-                      <p className="text-gray-700 text-[14px] leading-[1.65]">{r.text}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <p className="text-gray-500 text-[14px]">Aún no hay reseñas. ¡Sé el primero!</p>
             </div>
 
             {/* Related */}
@@ -220,7 +240,7 @@ export default function DetailPage() {
               <div className="bg-[#f39e10] px-6 py-5">
                 <div className="text-white/80 text-[12px] uppercase tracking-[0.6px]">Precio desde</div>
                 <div className="text-white text-[34px] font-black leading-tight">
-                  {formatPrice(service.price)}
+                  {formatPrice(service.base_price)}
                 </div>
                 <div className="text-white/65 text-[12px] mt-0.5">Sin cargos ocultos</div>
               </div>
@@ -245,7 +265,7 @@ export default function DetailPage() {
 
                 <div className="flex gap-1.5 items-center bg-[rgba(243,158,16,0.08)] border border-[rgba(243,158,16,0.22)] rounded-lg px-3 py-2.5 my-3.5 text-[12px] text-gray-500">
                   <Calendar size={13} className="text-[#f39e10]" />
-                  Disponibilidad: <strong className="text-gray-900 ml-0.5">{service.availability}</strong>
+                  Disponibilidad: <strong className="text-gray-900 ml-0.5">Consultar con el proveedor</strong>
                 </div>
 
                 <button

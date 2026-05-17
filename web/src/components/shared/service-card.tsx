@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Star, BadgeCheck } from "lucide-react";
-import type { Service } from "@/lib/data";
+import { BadgeCheck } from "lucide-react";
+import type { DbService } from "@/lib/data";
 import { formatPrice } from "@/lib/data";
 
-export function ServiceCard({ service }: { service: Service }) {
+export function ServiceCard({ service }: { service: DbService }) {
+  const sorted = [...service.images].sort((a, b) => a.display_order - b.display_order);
+  const cover =
+    sorted.find((i) => i.is_cover)?.url ??
+    sorted[0]?.url ??
+    "https://picsum.photos/seed/evdefault/800/520";
+
+  const isVerified = service.provider?.status === "approved";
+
   return (
     <Link href={`/servicios/${service.id}`} className="block group">
       <div
@@ -27,19 +35,17 @@ export function ServiceCard({ service }: { service: Service }) {
         <div className="relative overflow-hidden flex-shrink-0" style={{ height: 182 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={service.images[0]}
-            alt={service.name}
+            src={cover}
+            alt={service.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
           />
-          {/* Subtle bottom gradient for dots readability */}
           <div
             className="absolute inset-0"
             style={{ background: "linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.35) 100%)" }}
           />
-          {/* Image dots indicator */}
-          {service.images.length > 1 && (
+          {sorted.length > 1 && (
             <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 items-center">
-              {service.images.slice(0, 5).map((_, i) => (
+              {sorted.slice(0, 5).map((_, i) => (
                 <span
                   key={i}
                   className="rounded-full"
@@ -47,7 +53,6 @@ export function ServiceCard({ service }: { service: Service }) {
                     width: i === 0 ? 14 : 5,
                     height: 5,
                     background: i === 0 ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.45)",
-                    transition: "width 200ms ease",
                   }}
                 />
               ))}
@@ -58,23 +63,20 @@ export function ServiceCard({ service }: { service: Service }) {
         {/* Content */}
         <div className="px-4 pt-3.5 pb-4 flex flex-col gap-2.5">
 
-          {/* Title + price badge */}
+          {/* Title + price */}
           <div className="flex items-start gap-2">
-            <h3
-              className="text-gray-900 font-bold leading-snug tracking-[-0.2px] flex-1"
-              style={{ fontSize: 15 }}
-            >
-              {service.name}
+            <h3 className="text-gray-900 font-bold leading-snug tracking-[-0.2px] flex-1" style={{ fontSize: 15 }}>
+              {service.title}
             </h3>
             <span
               className="shrink-0 rounded-full px-2.5 py-1 text-white font-bold whitespace-nowrap"
               style={{ background: "#f39e10", fontSize: 11, marginTop: 1 }}
             >
-              {formatPrice(service.price)}
+              {formatPrice(service.base_price)}
             </span>
           </div>
 
-          {/* Description — max 2 lines */}
+          {/* Description — 2 lines max */}
           <p
             className="text-gray-500"
             style={{
@@ -86,31 +88,25 @@ export function ServiceCard({ service }: { service: Service }) {
               overflow: "hidden",
             }}
           >
-            {service.shortDesc}
+            {service.description ?? ""}
           </p>
 
-          {/* Pill tags */}
+          {/* Pills */}
           <div className="flex gap-1.5 flex-wrap">
-            <span
-              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-gray-600 font-semibold"
-              style={{ background: "#f3f4f6", fontSize: 11 }}
-            >
-              <Star size={10} fill="#f59e0b" stroke="none" />
-              {service.rating}
-            </span>
-            <span
-              className="rounded-full px-2.5 py-1 text-gray-600 font-semibold"
-              style={{ background: "#f3f4f6", fontSize: 11 }}
-            >
-              {service.city}
-            </span>
-            {service.verified && (
-              <span
-                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-gray-600 font-semibold"
-                style={{ background: "#f3f4f6", fontSize: 11 }}
-              >
+            {service.location && (
+              <span className="rounded-full px-2.5 py-1 text-gray-600 font-semibold" style={{ background: "#f3f4f6", fontSize: 11 }}>
+                {service.location}
+              </span>
+            )}
+            {isVerified && (
+              <span className="flex items-center gap-1 rounded-full px-2.5 py-1 text-gray-600 font-semibold" style={{ background: "#f3f4f6", fontSize: 11 }}>
                 <BadgeCheck size={10} style={{ color: "#f39e10" }} />
                 Verificado
+              </span>
+            )}
+            {service.category && (
+              <span className="rounded-full px-2.5 py-1 text-gray-600 font-semibold" style={{ background: "#f3f4f6", fontSize: 11 }}>
+                {service.category.name}
               </span>
             )}
           </div>
