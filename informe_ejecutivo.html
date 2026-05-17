@@ -8,18 +8,21 @@
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
   :root {
-    --violet: #7C3AED;
-    --violet-light: #EDE9FE;
-    --violet-dark: #5B21B6;
-    --gray-50: #F9FAFB;
+    --primary:       #F09F0F;
+    --primary-light: #FEF3C7;
+    --primary-dark:  #C07E0C;
+    --primary-muted: #FDECC8;
+    --gray-50:  #F9FAFB;
     --gray-100: #F3F4F6;
     --gray-200: #E5E7EB;
     --gray-400: #9CA3AF;
     --gray-600: #4B5563;
     --gray-800: #1F2937;
-    --green: #059669;
+    --green:  #059669;
     --yellow: #D97706;
-    --red: #DC2626;
+    --red:    #DC2626;
+    --cover-bg-from: #1C1000;
+    --cover-bg-to:   #3A2200;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -36,7 +39,7 @@
   .cover {
     width: 100%;
     min-height: 100vh;
-    background: linear-gradient(135deg, #5B21B6 0%, #7C3AED 50%, #A855F7 100%);
+    background: linear-gradient(135deg, #1C1000 0%, #3A2200 55%, #5C3800 100%);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -51,44 +54,43 @@
   .cover::before {
     content: '';
     position: absolute;
-    top: -100px; right: -100px;
-    width: 400px; height: 400px;
+    top: -120px; right: -120px;
+    width: 450px; height: 450px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.05);
+    background: radial-gradient(circle, rgba(240,159,15,0.12) 0%, transparent 70%);
   }
 
   .cover::after {
     content: '';
     position: absolute;
-    bottom: -80px; left: -80px;
-    width: 300px; height: 300px;
+    bottom: -100px; left: -100px;
+    width: 350px; height: 350px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.05);
+    background: radial-gradient(circle, rgba(240,159,15,0.08) 0%, transparent 70%);
   }
 
-  .cover-logo {
-    font-size: 52pt;
-    font-weight: 800;
-    color: white;
-    letter-spacing: -2px;
+  .cover-logo-img {
+    width: 320px;
+    max-width: 80%;
     margin-bottom: 8px;
+    filter: drop-shadow(0 4px 24px rgba(240,159,15,0.3));
   }
-
-  .cover-logo span { color: #C4B5FD; }
 
   .cover-tagline {
-    font-size: 13pt;
-    color: #DDD6FE;
-    margin-bottom: 48px;
+    font-size: 11pt;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 40px;
     font-weight: 400;
+    letter-spacing: 0.5px;
   }
 
   .cover-divider {
     width: 60px;
     height: 3px;
-    background: rgba(255,255,255,0.4);
-    margin: 32px auto;
+    background: var(--primary);
+    margin: 28px auto;
     border-radius: 2px;
+    opacity: 0.7;
   }
 
   .cover-title {
@@ -99,22 +101,21 @@
   }
 
   .cover-subtitle {
-    font-size: 12pt;
-    color: #DDD6FE;
-    margin-bottom: 48px;
+    font-size: 11.5pt;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 44px;
   }
 
   .cover-meta {
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(240,159,15,0.08);
+    border: 1px solid rgba(240,159,15,0.25);
     border-radius: 12px;
-    padding: 24px 40px;
-    margin-top: 24px;
-    backdrop-filter: blur(10px);
+    padding: 22px 40px;
+    margin-top: 20px;
   }
 
   .cover-meta p {
-    color: #EDE9FE;
+    color: rgba(255,255,255,0.7);
     font-size: 10pt;
     margin: 4px 0;
   }
@@ -123,15 +124,15 @@
 
   .cover-badge {
     display: inline-block;
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(240,159,15,0.15);
+    border: 1px solid rgba(240,159,15,0.35);
     border-radius: 20px;
-    padding: 6px 16px;
-    color: white;
+    padding: 6px 18px;
+    color: var(--primary);
     font-size: 9pt;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 32px;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
   }
 
@@ -144,26 +145,47 @@
 
   .page:last-child { page-break-after: avoid; }
 
-  /* ── HEADER DE SECCIÓN ── */
+  /* ── HEADER DE PÁGINA ── */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    margin-bottom: 32px;
+    border-bottom: 2px solid var(--primary-light);
+  }
+
+  .page-header-logo {
+    height: 28px;
+    width: auto;
+  }
+
+  .page-header-label {
+    font-size: 8.5pt;
+    color: var(--gray-400);
+    font-weight: 500;
+  }
+
+  /* ── SECCIÓN HEADER ── */
   .section-header {
     display: flex;
     align-items: center;
     gap: 14px;
     margin-bottom: 28px;
     padding-bottom: 16px;
-    border-bottom: 2px solid var(--violet-light);
+    border-bottom: 2px solid var(--primary-light);
   }
 
   .section-number {
     width: 36px;
     height: 36px;
-    background: var(--violet);
+    background: var(--primary);
     color: white;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 13pt;
     flex-shrink: 0;
   }
@@ -171,30 +193,7 @@
   .section-title {
     font-size: 16pt;
     font-weight: 700;
-    color: var(--violet-dark);
-  }
-
-  /* ── HEADER INTERNO DE PÁGINA ── */
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 12px;
-    margin-bottom: 32px;
-    border-bottom: 1px solid var(--gray-200);
-  }
-
-  .page-header-logo {
-    font-size: 13pt;
-    font-weight: 800;
-    color: var(--violet);
-    letter-spacing: -0.5px;
-  }
-
-  .page-header-label {
-    font-size: 8.5pt;
-    color: var(--gray-400);
-    font-weight: 500;
+    color: var(--primary-dark);
   }
 
   /* ── TIPOGRAFÍA ── */
@@ -208,26 +207,26 @@
   h4 {
     font-size: 10.5pt;
     font-weight: 600;
-    color: var(--violet-dark);
+    color: var(--primary-dark);
     margin: 16px 0 8px;
   }
 
   p { margin-bottom: 10px; color: var(--gray-600); }
-
   ul, ol { padding-left: 20px; margin-bottom: 12px; color: var(--gray-600); }
   li { margin-bottom: 4px; }
 
-  /* ── CARDS / HIGHLIGHT BOXES ── */
+  /* ── HIGHLIGHT BOX ── */
   .highlight-box {
-    background: var(--violet-light);
-    border-left: 4px solid var(--violet);
+    background: var(--primary-light);
+    border-left: 4px solid var(--primary);
     border-radius: 0 8px 8px 0;
     padding: 16px 20px;
     margin: 16px 0;
   }
 
-  .highlight-box p { color: var(--violet-dark); margin: 0; font-weight: 500; }
+  .highlight-box p { color: var(--primary-dark); margin: 0; font-weight: 500; }
 
+  /* ── INFO CARDS ── */
   .info-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -238,15 +237,16 @@
   .info-card {
     background: var(--gray-50);
     border: 1px solid var(--gray-200);
+    border-top: 3px solid var(--primary);
     border-radius: 10px;
     padding: 16px;
     text-align: center;
   }
 
   .info-card-value {
-    font-size: 20pt;
+    font-size: 22pt;
     font-weight: 800;
-    color: var(--violet);
+    color: var(--primary);
     display: block;
   }
 
@@ -267,11 +267,11 @@
   }
 
   thead th {
-    background: var(--violet);
+    background: var(--primary);
     color: white;
     padding: 10px 14px;
     text-align: left;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 9pt;
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -281,7 +281,7 @@
   thead th:last-child  { border-radius: 0 6px 0 0; }
 
   tbody tr:nth-child(even) { background: var(--gray-50); }
-  tbody tr:hover { background: var(--violet-light); }
+  tbody tr:hover { background: var(--primary-light); }
 
   tbody td {
     padding: 9px 14px;
@@ -302,7 +302,7 @@
     white-space: nowrap;
   }
 
-  .badge-violet  { background: var(--violet-light); color: var(--violet-dark); }
+  .badge-primary { background: var(--primary-light); color: var(--primary-dark); }
   .badge-green   { background: #D1FAE5; color: #065F46; }
   .badge-yellow  { background: #FEF3C7; color: #92400E; }
   .badge-red     { background: #FEE2E2; color: #991B1B; }
@@ -316,14 +316,10 @@
     margin: 16px 0;
   }
 
-  .sprint-card {
-    border: 1px solid var(--gray-200);
-    border-radius: 10px;
-    overflow: hidden;
-  }
+  .sprint-card { border: 1px solid var(--gray-200); border-radius: 10px; overflow: hidden; }
 
   .sprint-card-header {
-    background: var(--violet);
+    background: var(--primary);
     color: white;
     padding: 10px 16px;
     font-weight: 700;
@@ -341,26 +337,12 @@
     font-weight: 500;
   }
 
-  .sprint-card-body {
-    padding: 12px 16px;
-    background: white;
-  }
-
-  .sprint-card-body p {
-    font-size: 9pt;
-    margin: 0 0 8px;
-    color: var(--gray-600);
-  }
-
-  .sprint-card-body ul {
-    font-size: 9pt;
-    margin: 0;
-    padding-left: 16px;
-  }
-
+  .sprint-card-body { padding: 12px 16px; background: white; }
+  .sprint-card-body p  { font-size: 9pt; margin: 0 0 8px; color: var(--gray-600); }
+  .sprint-card-body ul { font-size: 9pt; margin: 0; padding-left: 16px; }
   .sprint-card-body li { margin-bottom: 3px; }
 
-  /* ── TECH STACK ── */
+  /* ── TECH GRID ── */
   .tech-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -382,13 +364,12 @@
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    background: var(--violet);
+    background: var(--primary);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 9pt;
-    font-weight: 800;
+    font-size: 14pt;
     flex-shrink: 0;
   }
 
@@ -399,24 +380,18 @@
   .flow-steps {
     display: flex;
     align-items: flex-start;
-    gap: 0;
     margin: 20px 0;
     flex-wrap: wrap;
   }
 
-  .flow-step {
-    flex: 1;
-    min-width: 100px;
-    text-align: center;
-    position: relative;
-  }
+  .flow-step { flex: 1; min-width: 80px; text-align: center; position: relative; }
 
   .flow-step:not(:last-child)::after {
     content: '→';
     position: absolute;
     right: -10px;
-    top: 14px;
-    color: var(--violet);
+    top: 12px;
+    color: var(--primary);
     font-size: 14pt;
     font-weight: 700;
   }
@@ -425,10 +400,10 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: var(--violet);
+    background: var(--primary);
     color: white;
     font-weight: 700;
-    font-size: 11pt;
+    font-size: 10pt;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -440,7 +415,7 @@
   /* ── ER DIAGRAM ── */
   .er-table {
     display: inline-block;
-    border: 2px solid var(--violet);
+    border: 2px solid var(--primary);
     border-radius: 8px;
     overflow: hidden;
     margin: 6px;
@@ -449,7 +424,7 @@
   }
 
   .er-table-header {
-    background: var(--violet);
+    background: var(--primary);
     color: white;
     padding: 5px 12px;
     font-weight: 700;
@@ -457,20 +432,11 @@
     text-align: center;
   }
 
-  .er-table-body {
-    background: white;
-    padding: 6px 10px;
-  }
+  .er-table-body { background: white; padding: 6px 10px; }
 
-  .er-field {
-    display: flex;
-    gap: 8px;
-    padding: 1px 0;
-    color: var(--gray-600);
-  }
-
-  .er-field-pk { color: var(--violet); font-weight: 700; }
-  .er-field-fk { color: var(--yellow); font-weight: 600; }
+  .er-field { display: flex; gap: 8px; padding: 1px 0; color: var(--gray-600); }
+  .er-field-pk   { color: var(--primary-dark); font-weight: 700; }
+  .er-field-fk   { color: #D97706; font-weight: 600; }
   .er-field-type { color: var(--gray-400); font-style: italic; font-size: 7.5pt; }
 
   .er-container {
@@ -485,26 +451,9 @@
     border: 1px solid var(--gray-200);
   }
 
-  /* ── SCRUM ── */
-  .scrum-ceremony {
-    display: flex;
-    gap: 16px;
-    margin: 12px 0;
-    align-items: flex-start;
-  }
-
-  .scrum-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--violet);
-    margin-top: 6px;
-    flex-shrink: 0;
-  }
-
   /* ── ARCHITECTURE ── */
   .arch-box {
-    border: 2px solid var(--violet);
+    border: 2px solid var(--primary);
     border-radius: 10px;
     overflow: hidden;
     margin: 16px 0;
@@ -524,28 +473,24 @@
     width: 110px;
     font-size: 8.5pt;
     font-weight: 700;
-    color: var(--violet);
+    color: var(--primary-dark);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     flex-shrink: 0;
   }
 
-  .arch-layer-content {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+  .arch-layer-content { display: flex; gap: 8px; flex-wrap: wrap; }
 
   .arch-chip {
-    background: var(--violet-light);
-    color: var(--violet-dark);
+    background: var(--primary-light);
+    color: var(--primary-dark);
     border-radius: 6px;
     padding: 4px 10px;
     font-size: 8.5pt;
     font-weight: 600;
   }
 
-  /* ── UI MOCKUP PLACEHOLDER ── */
+  /* ── UI PLACEHOLDERS ── */
   .ui-placeholder {
     border: 2px dashed var(--gray-200);
     border-radius: 10px;
@@ -560,16 +505,9 @@
     min-height: 200px;
   }
 
-  .ui-placeholder-icon { font-size: 28pt; margin-bottom: 8px; }
+  .ui-placeholder-icon  { font-size: 28pt; margin-bottom: 8px; }
   .ui-placeholder-title { font-weight: 700; color: var(--gray-800); font-size: 10.5pt; }
   .ui-placeholder-desc  { font-size: 8.5pt; color: var(--gray-400); margin-top: 4px; }
-
-  .ui-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    margin: 16px 0;
-  }
 
   /* ── PRINT ── */
   @media print {
@@ -578,21 +516,19 @@
     .cover { page-break-after: always; min-height: 100vh; }
   }
 
-  @page {
-    size: A4;
-    margin: 0;
-  }
+  @page { size: A4; margin: 0; }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      PORTADA
-════════════════════════════════════════════════════════ -->
+════════════════════════════════════════ -->
 <div class="cover">
   <div class="cover-badge">Informe Ejecutivo · 2026</div>
-  <div class="cover-logo">Event<span>ia</span></div>
-  <div class="cover-tagline">Marketplace digital para servicios de eventos</div>
+
+  <img class="cover-logo-img" src="EventiaLogoW.png" alt="Eventia Logo">
+  <div class="cover-tagline">Encuentra, Reserva, Celebra</div>
 
   <div class="cover-divider"></div>
 
@@ -608,12 +544,12 @@
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      1. RESUMEN EJECUTIVO
-════════════════════════════════════════════════════════ -->
+════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
@@ -628,7 +564,7 @@
 
   <p>En el mercado local, la organización de eventos opera íntegramente mediante referidos y recomendaciones informales, lo que genera fricción alta para los organizadores y exclusión de proveedores sin red social establecida. Eventia digitaliza este mercado aplicando el modelo de marketplace de dos lados, comparable a lo que Despegar.com hace en el sector de viajes: agrupa servicios heterogéneos bajo una sola plataforma con experiencia de usuario unificada.</p>
 
-  <p>El modelo de ingresos se basa en comisiones por contrato cerrado — Eventia retiene un porcentaje configurable de cada transacción, alineando sus incentivos con el éxito de cada proveedor. El pago completo fluye por la plataforma, garantizando trazabilidad y respaldo contractual digital.</p>
+  <p>El modelo de ingresos se basa en comisiones por contrato cerrado — Eventia retiene un porcentaje configurable de cada transacción, alineando sus incentivos con el éxito de cada proveedor.</p>
 
   <div class="info-grid">
     <div class="info-card">
@@ -647,9 +583,7 @@
 
   <h3>Estado actual del proyecto</h3>
   <table>
-    <thead>
-      <tr><th>Entregable</th><th>Estado</th></tr>
-    </thead>
+    <thead><tr><th>Entregable</th><th>Estado</th></tr></thead>
     <tbody>
       <tr><td>Definición de requerimientos</td><td><span class="badge badge-green">Completado</span></td></tr>
       <tr><td>Arquitectura y stack tecnológico</td><td><span class="badge badge-green">Completado</span></td></tr>
@@ -663,12 +597,12 @@
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      2. DESCRIPCIÓN DEL PROYECTO
-════════════════════════════════════════════════════════ -->
+════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
@@ -680,20 +614,18 @@
   <h3>Problema identificado</h3>
   <p>La organización de eventos sociales en el mercado local presenta las siguientes fricciones críticas:</p>
   <ul>
-    <li><strong>Proceso disperso:</strong> el organizador debe buscar proveedores manualmente vía WhatsApp, Facebook e Instagram sin comparación estructurada.</li>
+    <li><strong>Proceso disperso:</strong> el organizador busca proveedores manualmente vía WhatsApp, Facebook e Instagram sin comparación estructurada.</li>
     <li><strong>Sin trazabilidad:</strong> los acuerdos son verbales o informales, sin respaldo contractual ni garantía de cumplimiento.</li>
     <li><strong>Competencia limitada:</strong> proveedores sin red social establecida quedan excluidos del mercado independientemente de su calidad.</li>
     <li><strong>Opacidad de precios:</strong> no existen referencias de mercado, lo que genera desigualdad en la negociación.</li>
   </ul>
 
   <h3>Solución propuesta</h3>
-  <p>Eventia centraliza la oferta de servicios para eventos bajo una plataforma web, permitiendo buscar, comparar, contratar y pagar proveedores con contrato digital y pago integrado. El modelo de referencia es <strong>Despegar.com</strong>: un marketplace que agrupa servicios heterogéneos (vuelos, hoteles, tours) bajo una experiencia unificada.</p>
+  <p>Eventia centraliza la oferta de servicios para eventos bajo una plataforma web, permitiendo buscar, comparar, contratar y pagar proveedores con contrato digital y pago integrado. El modelo de referencia es <strong>Despegar.com</strong>: un marketplace que agrupa servicios heterogéneos bajo una experiencia unificada.</p>
 
   <h3>Actores del sistema</h3>
   <table>
-    <thead>
-      <tr><th>Actor</th><th>Descripción</th><th>Acceso</th></tr>
-    </thead>
+    <thead><tr><th>Actor</th><th>Descripción</th><th>Acceso</th></tr></thead>
     <tbody>
       <tr><td>Visitante</td><td>Usuario no registrado. Puede explorar el catálogo libremente.</td><td>Solo lectura</td></tr>
       <tr><td>Cliente</td><td>Organizador de eventos. Busca, reserva, contrata y paga servicios.</td><td>Registro requerido</td></tr>
@@ -706,64 +638,38 @@
   <div class="tech-grid">
     <div class="tech-item">
       <div class="tech-icon">🏛</div>
-      <div>
-        <div class="tech-name">Locales y salones</div>
-        <div class="tech-desc">Alquiler de espacios para eventos</div>
-      </div>
+      <div><div class="tech-name">Locales y salones</div><div class="tech-desc">Alquiler de espacios para eventos</div></div>
     </div>
     <div class="tech-item">
       <div class="tech-icon">📷</div>
-      <div>
-        <div class="tech-name">Fotografía y video</div>
-        <div class="tech-desc">Fotógrafos y videógrafos profesionales</div>
-      </div>
+      <div><div class="tech-name">Fotografía y video</div><div class="tech-desc">Fotógrafos y videógrafos profesionales</div></div>
     </div>
     <div class="tech-item">
       <div class="tech-icon">🎵</div>
-      <div>
-        <div class="tech-name">Música</div>
-        <div class="tech-desc">DJs, bandas y orquestas</div>
-      </div>
+      <div><div class="tech-name">Música</div><div class="tech-desc">DJs, bandas y orquestas</div></div>
     </div>
     <div class="tech-item">
       <div class="tech-icon">✨</div>
-      <div>
-        <div class="tech-name">Decoración</div>
-        <div class="tech-desc">Decoradores, flores e iluminación</div>
-      </div>
+      <div><div class="tech-name">Decoración</div><div class="tech-desc">Decoradores, flores e iluminación</div></div>
     </div>
   </div>
 
-  <h3>Modelo de negocio</h3>
-  <p>Comisión por contrato cerrado — el pago completo ingresa a la plataforma; Eventia retiene el porcentaje acordado (configurable por categoría) y transfiere el saldo al proveedor una vez completado el evento.</p>
-
+  <h3>Modelo de negocio — Flujo de comisión</h3>
   <div class="flow-steps">
-    <div class="flow-step">
-      <div class="flow-dot">1</div>
-      <div class="flow-label">Cliente paga<br>100% online</div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-dot">2</div>
-      <div class="flow-label">Eventia retiene<br>comisión X%</div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-dot">3</div>
-      <div class="flow-label">Evento se<br>realiza</div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-dot">4</div>
-      <div class="flow-label">Proveedor recibe<br>(100-X)%</div>
-    </div>
+    <div class="flow-step"><div class="flow-dot">1</div><div class="flow-label">Cliente paga<br>100% online</div></div>
+    <div class="flow-step"><div class="flow-dot">2</div><div class="flow-label">Eventia retiene<br>comisión X%</div></div>
+    <div class="flow-step"><div class="flow-dot">3</div><div class="flow-label">Evento se<br>realiza</div></div>
+    <div class="flow-step"><div class="flow-dot">4</div><div class="flow-label">Proveedor recibe<br>(100−X)%</div></div>
   </div>
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      3. MODELO ÁGIL — SCRUM
-════════════════════════════════════════════════════════ -->
+════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
@@ -773,13 +679,11 @@
   </div>
 
   <h3>¿Por qué Scrum?</h3>
-  <p>Scrum fue seleccionado como metodología de desarrollo por su capacidad de entregar valor incremental en ciclos cortos, permitir cambios de prioridad entre sprints y generar visibilidad continua del avance. Es especialmente adecuado para proyectos de software con requerimientos que pueden evolucionar, como un marketplace donde la retroalimentación temprana de usuarios es clave.</p>
+  <p>Scrum fue seleccionado por su capacidad de entregar valor incremental en ciclos cortos, permitir cambios de prioridad entre sprints y generar visibilidad continua del avance. Es especialmente adecuado para marketplaces donde la retroalimentación temprana de usuarios es clave para ajustar el producto.</p>
 
   <h3>Roles del equipo</h3>
   <table>
-    <thead>
-      <tr><th>Rol</th><th>Responsabilidad</th></tr>
-    </thead>
+    <thead><tr><th>Rol</th><th>Responsabilidad</th></tr></thead>
     <tbody>
       <tr><td>Product Owner</td><td>Define y prioriza el Product Backlog. Representa los intereses del negocio y los usuarios. Aprueba los entregables de cada sprint.</td></tr>
       <tr><td>Scrum Master</td><td>Facilita las ceremonias, elimina impedimentos y garantiza el cumplimiento del proceso ágil.</td></tr>
@@ -789,9 +693,7 @@
 
   <h3>Ceremonias Scrum</h3>
   <table>
-    <thead>
-      <tr><th>Ceremonia</th><th>Frecuencia</th><th>Duración</th><th>Objetivo</th></tr>
-    </thead>
+    <thead><tr><th>Ceremonia</th><th>Frecuencia</th><th>Duración</th><th>Objetivo</th></tr></thead>
     <tbody>
       <tr><td>Sprint Planning</td><td>Inicio de sprint</td><td>1 hora</td><td>Seleccionar historias del backlog y definir el Sprint Goal</td></tr>
       <tr><td>Daily Standup</td><td>Diario</td><td>15 min</td><td>Sincronizar avance e identificar bloqueos</td></tr>
@@ -802,9 +704,7 @@
 
   <h3>Artefactos Scrum</h3>
   <table>
-    <thead>
-      <tr><th>Artefacto</th><th>Descripción</th><th>Herramienta</th></tr>
-    </thead>
+    <thead><tr><th>Artefacto</th><th>Descripción</th><th>Herramienta</th></tr></thead>
     <tbody>
       <tr><td>Product Backlog</td><td>Lista priorizada de todas las historias de usuario del proyecto</td><td>GitHub Projects</td></tr>
       <tr><td>Sprint Backlog</td><td>Subconjunto de historias comprometidas para el sprint activo</td><td>GitHub Projects</td></tr>
@@ -812,12 +712,10 @@
     </tbody>
   </table>
 
-  <h3>Cadencia de sprints</h3>
-  <p>Sprints de <strong>2 semanas</strong> de duración. El proyecto contempla <strong>5 sprints</strong> para completar el MVP.</p>
-
+  <h3>Sprints planificados — 5 sprints de 2 semanas</h3>
   <div class="sprint-grid">
     <div class="sprint-card">
-      <div class="sprint-card-header">Sprint 1 <span>Semanas 1-2</span></div>
+      <div class="sprint-card-header">Sprint 1 <span>Semanas 1–2</span></div>
       <div class="sprint-card-body">
         <p><strong>Objetivo:</strong> Base del sistema y gestión de usuarios</p>
         <ul>
@@ -829,7 +727,7 @@
       </div>
     </div>
     <div class="sprint-card">
-      <div class="sprint-card-header">Sprint 2 <span>Semanas 3-4</span></div>
+      <div class="sprint-card-header">Sprint 2 <span>Semanas 3–4</span></div>
       <div class="sprint-card-body">
         <p><strong>Objetivo:</strong> Catálogo de servicios</p>
         <ul>
@@ -841,7 +739,7 @@
       </div>
     </div>
     <div class="sprint-card">
-      <div class="sprint-card-header">Sprint 3 <span>Semanas 5-6</span></div>
+      <div class="sprint-card-header">Sprint 3 <span>Semanas 5–6</span></div>
       <div class="sprint-card-body">
         <p><strong>Objetivo:</strong> Reservas y contratos</p>
         <ul>
@@ -853,19 +751,19 @@
       </div>
     </div>
     <div class="sprint-card">
-      <div class="sprint-card-header">Sprint 4 <span>Semanas 7-8</span></div>
+      <div class="sprint-card-header">Sprint 4 <span>Semanas 7–8</span></div>
       <div class="sprint-card-body">
         <p><strong>Objetivo:</strong> Pagos y comisiones</p>
         <ul>
           <li>Integración con Stripe</li>
-          <li>Stripe Connect para pagos a proveedores</li>
+          <li>Stripe Connect para proveedores</li>
           <li>Retención automática de comisión</li>
           <li>Comprobantes y política de cancelación</li>
         </ul>
       </div>
     </div>
     <div class="sprint-card" style="grid-column: span 2;">
-      <div class="sprint-card-header">Sprint 5 <span>Semanas 9-10</span></div>
+      <div class="sprint-card-header">Sprint 5 <span>Semanas 9–10</span></div>
       <div class="sprint-card-body">
         <p><strong>Objetivo:</strong> Reseñas, notificaciones y despliegue final</p>
         <ul style="columns: 2;">
@@ -882,12 +780,12 @@
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      4. PRODUCT BACKLOG — HISTORIAS DE USUARIO
-════════════════════════════════════════════════════════ -->
+════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
@@ -898,36 +796,30 @@
 
   <h3>Módulo 1 — Gestión de Usuarios</h3>
   <table>
-    <thead>
-      <tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr>
-    </thead>
+    <thead><tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr></thead>
     <tbody>
       <tr><td>HU-01</td><td>Como <strong>visitante</strong>, quiero explorar y buscar servicios sin registrarme para evaluar la plataforma antes de crear una cuenta.</td><td><span class="badge badge-yellow">Alta</span></td><td>S2</td></tr>
       <tr><td>HU-02</td><td>Como <strong>usuario nuevo</strong>, quiero registrarme con mi correo y contraseña para acceder a las funcionalidades de cliente.</td><td><span class="badge badge-yellow">Alta</span></td><td>S1</td></tr>
       <tr><td>HU-03</td><td>Como <strong>proveedor</strong>, quiero registrarme y enviar mis documentos de verificación para poder publicar mis servicios en la plataforma.</td><td><span class="badge badge-yellow">Alta</span></td><td>S1</td></tr>
       <tr><td>HU-04</td><td>Como <strong>administrador</strong>, quiero aprobar o rechazar el registro de proveedores para garantizar la calidad y confianza de la plataforma.</td><td><span class="badge badge-yellow">Alta</span></td><td>S1</td></tr>
-      <tr><td>HU-05</td><td>Como <strong>usuario autenticado</strong>, quiero gestionar mi perfil (foto, datos y contraseña) para mantener mi información actualizada.</td><td><span class="badge badge-violet">Media</span></td><td>S1</td></tr>
+      <tr><td>HU-05</td><td>Como <strong>usuario autenticado</strong>, quiero gestionar mi perfil (foto, datos y contraseña) para mantener mi información actualizada.</td><td><span class="badge badge-primary">Media</span></td><td>S1</td></tr>
     </tbody>
   </table>
 
   <h3>Módulo 2 — Catálogo de Servicios</h3>
   <table>
-    <thead>
-      <tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr>
-    </thead>
+    <thead><tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr></thead>
     <tbody>
       <tr><td>HU-06</td><td>Como <strong>proveedor aprobado</strong>, quiero crear publicaciones de mis servicios con fotos, descripción y precio para atraer clientes.</td><td><span class="badge badge-yellow">Alta</span></td><td>S2</td></tr>
       <tr><td>HU-07</td><td>Como <strong>cliente</strong>, quiero buscar servicios por categoría, fecha y precio para encontrar rápidamente lo que necesito para mi evento.</td><td><span class="badge badge-yellow">Alta</span></td><td>S2</td></tr>
-      <tr><td>HU-08</td><td>Como <strong>visitante</strong>, quiero ver la información completa de cada servicio (fotos, precio, calificación y disponibilidad) para tomar una decisión informada.</td><td><span class="badge badge-yellow">Alta</span></td><td>S2</td></tr>
-      <tr><td>HU-09</td><td>Como <strong>cliente</strong>, quiero filtrar y ordenar los resultados por precio, calificación y fecha para comparar servicios fácilmente.</td><td><span class="badge badge-violet">Media</span></td><td>S2</td></tr>
+      <tr><td>HU-08</td><td>Como <strong>visitante</strong>, quiero ver la información completa de cada servicio (fotos, precio, calificación) para tomar una decisión informada.</td><td><span class="badge badge-yellow">Alta</span></td><td>S2</td></tr>
+      <tr><td>HU-09</td><td>Como <strong>cliente</strong>, quiero filtrar y ordenar los resultados por precio y calificación para comparar servicios fácilmente.</td><td><span class="badge badge-primary">Media</span></td><td>S2</td></tr>
     </tbody>
   </table>
 
   <h3>Módulo 3 — Reservas y Contratos</h3>
   <table>
-    <thead>
-      <tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr>
-    </thead>
+    <thead><tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr></thead>
     <tbody>
       <tr><td>HU-10</td><td>Como <strong>cliente</strong>, quiero reservar directamente un servicio de precio fijo para asegurar disponibilidad en la fecha de mi evento.</td><td><span class="badge badge-yellow">Alta</span></td><td>S3</td></tr>
       <tr><td>HU-11</td><td>Como <strong>cliente</strong>, quiero solicitar una cotización describiendo mi evento para obtener un precio personalizado del proveedor.</td><td><span class="badge badge-yellow">Alta</span></td><td>S3</td></tr>
@@ -935,39 +827,35 @@
       <tr><td>HU-13</td><td>Como <strong>cliente</strong>, quiero recibir y aceptar la propuesta de precio del proveedor para confirmar el acuerdo de cotización.</td><td><span class="badge badge-yellow">Alta</span></td><td>S3</td></tr>
       <tr><td>HU-14</td><td>Como <strong>usuario</strong>, quiero que el sistema genere un contrato digital al confirmar una reserva para tener respaldo formal del acuerdo.</td><td><span class="badge badge-yellow">Alta</span></td><td>S3</td></tr>
       <tr><td>HU-15</td><td>Como <strong>cliente o proveedor</strong>, quiero firmar digitalmente el contrato dentro de la plataforma para formalizar el compromiso de manera trazable.</td><td><span class="badge badge-yellow">Alta</span></td><td>S3</td></tr>
-      <tr><td>HU-16</td><td>Como <strong>usuario</strong>, quiero ver el estado actualizado de mis reservas para conocer en qué etapa se encuentra cada contratación.</td><td><span class="badge badge-violet">Media</span></td><td>S3</td></tr>
+      <tr><td>HU-16</td><td>Como <strong>usuario</strong>, quiero ver el estado actualizado de mis reservas para conocer en qué etapa se encuentra cada contratación.</td><td><span class="badge badge-primary">Media</span></td><td>S3</td></tr>
     </tbody>
   </table>
 </div>
 
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <h3>Módulo 4 — Pagos y Comisiones</h3>
   <table>
-    <thead>
-      <tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr>
-    </thead>
+    <thead><tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr></thead>
     <tbody>
       <tr><td>HU-17</td><td>Como <strong>cliente</strong>, quiero pagar el servicio de forma online al confirmar el contrato para asegurar la reserva sin trámites presenciales.</td><td><span class="badge badge-yellow">Alta</span></td><td>S4</td></tr>
       <tr><td>HU-18</td><td>Como <strong>administrador</strong>, quiero que el sistema retenga automáticamente la comisión de Eventia para simplificar la gestión de ingresos de la plataforma.</td><td><span class="badge badge-yellow">Alta</span></td><td>S4</td></tr>
       <tr><td>HU-19</td><td>Como <strong>proveedor</strong>, quiero recibir el pago automáticamente una vez completado el evento para tener garantía de cobro sin gestión manual.</td><td><span class="badge badge-yellow">Alta</span></td><td>S4</td></tr>
-      <tr><td>HU-20</td><td>Como <strong>usuario</strong>, quiero recibir un comprobante digital de pago para tener registro formal de mis transacciones.</td><td><span class="badge badge-violet">Media</span></td><td>S4</td></tr>
-      <tr><td>HU-21</td><td>Como <strong>cliente</strong>, quiero conocer la política de cancelación antes de confirmar el pago para tomar una decisión informada sobre mi reserva.</td><td><span class="badge badge-violet">Media</span></td><td>S4</td></tr>
+      <tr><td>HU-20</td><td>Como <strong>usuario</strong>, quiero recibir un comprobante digital de pago para tener registro formal de mis transacciones.</td><td><span class="badge badge-primary">Media</span></td><td>S4</td></tr>
+      <tr><td>HU-21</td><td>Como <strong>cliente</strong>, quiero conocer la política de cancelación antes de confirmar el pago para tomar una decisión informada sobre mi reserva.</td><td><span class="badge badge-primary">Media</span></td><td>S4</td></tr>
     </tbody>
   </table>
 
   <h3>Módulo 5 — Reseñas y Calificaciones</h3>
   <table>
-    <thead>
-      <tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr>
-    </thead>
+    <thead><tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr></thead>
     <tbody>
-      <tr><td>HU-22</td><td>Como <strong>cliente</strong>, quiero calificar con estrellas y dejar un comentario tras el evento para ayudar a otros usuarios a elegir mejor.</td><td><span class="badge badge-violet">Media</span></td><td>S5</td></tr>
-      <tr><td>HU-23</td><td>Como <strong>proveedor</strong>, quiero responder públicamente las reseñas de mis clientes para mantener una comunicación transparente con la comunidad.</td><td><span class="badge badge-violet">Media</span></td><td>S5</td></tr>
+      <tr><td>HU-22</td><td>Como <strong>cliente</strong>, quiero calificar con estrellas y dejar un comentario tras el evento para ayudar a otros usuarios a elegir mejor.</td><td><span class="badge badge-primary">Media</span></td><td>S5</td></tr>
+      <tr><td>HU-23</td><td>Como <strong>proveedor</strong>, quiero responder públicamente las reseñas de mis clientes para mantener una comunicación transparente con la comunidad.</td><td><span class="badge badge-primary">Media</span></td><td>S5</td></tr>
       <tr><td>HU-24</td><td>Como <strong>visitante</strong>, quiero ver la calificación promedio de cada servicio para evaluar su calidad antes de contratar.</td><td><span class="badge badge-yellow">Alta</span></td><td>S2</td></tr>
       <tr><td>HU-25</td><td>Como <strong>administrador</strong>, quiero moderar y eliminar reseñas inapropiadas para mantener la confianza y reputación de la plataforma.</td><td><span class="badge badge-gray">Baja</span></td><td>S5</td></tr>
     </tbody>
@@ -975,37 +863,33 @@
 
   <h3>Módulo 6 — Notificaciones</h3>
   <table>
-    <thead>
-      <tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr>
-    </thead>
+    <thead><tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr></thead>
     <tbody>
-      <tr><td>HU-26</td><td>Como <strong>usuario</strong>, quiero recibir correos de confirmación y recordatorios de eventos próximos para estar siempre informado del estado de mis contrataciones.</td><td><span class="badge badge-violet">Media</span></td><td>S5</td></tr>
-      <tr><td>HU-27</td><td>Como <strong>usuario</strong>, quiero ver mis notificaciones dentro de la plataforma para tener un historial centralizado de actividad relevante.</td><td><span class="badge badge-violet">Media</span></td><td>S5</td></tr>
+      <tr><td>HU-26</td><td>Como <strong>usuario</strong>, quiero recibir correos de confirmación y recordatorios de eventos próximos para estar siempre informado del estado de mis contrataciones.</td><td><span class="badge badge-primary">Media</span></td><td>S5</td></tr>
+      <tr><td>HU-27</td><td>Como <strong>usuario</strong>, quiero ver mis notificaciones dentro de la plataforma para tener un historial centralizado de actividad relevante.</td><td><span class="badge badge-primary">Media</span></td><td>S5</td></tr>
     </tbody>
   </table>
 
   <h3>Módulo 7 — Panel de Administración</h3>
   <table>
-    <thead>
-      <tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr>
-    </thead>
+    <thead><tr><th>ID</th><th>Historia de usuario</th><th>Prioridad</th><th>Sprint</th></tr></thead>
     <tbody>
       <tr><td>HU-28</td><td>Como <strong>administrador</strong>, quiero ver un dashboard con métricas clave (reservas, ingresos, usuarios) para monitorear el desempeño de la plataforma en tiempo real.</td><td><span class="badge badge-yellow">Alta</span></td><td>S1</td></tr>
       <tr><td>HU-29</td><td>Como <strong>administrador</strong>, quiero revisar documentos y aprobar o rechazar proveedores para garantizar la calidad del catálogo de servicios.</td><td><span class="badge badge-yellow">Alta</span></td><td>S1</td></tr>
-      <tr><td>HU-30</td><td>Como <strong>administrador</strong>, quiero configurar el porcentaje de comisión por categoría para gestionar de forma flexible los ingresos de la plataforma.</td><td><span class="badge badge-violet">Media</span></td><td>S1</td></tr>
-      <tr><td>HU-31</td><td>Como <strong>administrador</strong>, quiero suspender o eliminar cuentas de usuarios para mantener la integridad y seguridad de la plataforma.</td><td><span class="badge badge-violet">Media</span></td><td>S1</td></tr>
-      <tr><td>HU-32</td><td>Como <strong>administrador</strong>, quiero consultar el historial completo de contratos y pagos para resolver disputas entre clientes y proveedores con información trazable.</td><td><span class="badge badge-violet">Media</span></td><td>S4</td></tr>
+      <tr><td>HU-30</td><td>Como <strong>administrador</strong>, quiero configurar el porcentaje de comisión por categoría para gestionar de forma flexible los ingresos de la plataforma.</td><td><span class="badge badge-primary">Media</span></td><td>S1</td></tr>
+      <tr><td>HU-31</td><td>Como <strong>administrador</strong>, quiero suspender o eliminar cuentas de usuarios para mantener la integridad y seguridad de la plataforma.</td><td><span class="badge badge-primary">Media</span></td><td>S1</td></tr>
+      <tr><td>HU-32</td><td>Como <strong>administrador</strong>, quiero consultar el historial completo de contratos y pagos para resolver disputas entre clientes y proveedores con información trazable.</td><td><span class="badge badge-primary">Media</span></td><td>S4</td></tr>
     </tbody>
   </table>
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      5. ARQUITECTURA DEL SISTEMA
-════════════════════════════════════════════════════════ -->
+════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
@@ -1014,8 +898,8 @@
     <div class="section-title">Arquitectura del Sistema</div>
   </div>
 
-  <h3>Patrón arquitectónico: Monolito Modular</h3>
-  <p>Se adopta una arquitectura de <strong>monolito modular</strong> para el MVP: un único repositorio y deployment con módulos internos claramente delimitados por dominio de negocio. Este patrón reduce la complejidad operacional durante el desarrollo inicial y permite una eventual migración a microservicios sin reescritura.</p>
+  <h3>Patrón: Monolito Modular</h3>
+  <p>Un único repositorio y deployment con módulos internos claramente delimitados por dominio de negocio. Reduce la complejidad operacional durante el desarrollo inicial y permite escalar a microservicios sin reescritura cuando el volumen lo justifique.</p>
 
   <div class="arch-box">
     <div class="arch-layer">
@@ -1027,7 +911,7 @@
         <span class="arch-chip">shadcn/ui</span>
       </div>
     </div>
-    <div class="arch-layer" style="background: var(--violet-light);">
+    <div class="arch-layer" style="background: var(--primary-light);">
       <div class="arch-layer-label">Servidor</div>
       <div class="arch-layer-content">
         <span class="arch-chip">Next.js App Router</span>
@@ -1065,9 +949,7 @@
 
   <h3>Stack tecnológico</h3>
   <table>
-    <thead>
-      <tr><th>Tecnología</th><th>Rol</th><th>Justificación</th></tr>
-    </thead>
+    <thead><tr><th>Tecnología</th><th>Rol</th><th>Justificación</th></tr></thead>
     <tbody>
       <tr><td>Next.js 15</td><td>Framework full-stack</td><td>SSR para SEO del catálogo, Server Actions para lógica de negocio, un solo repositorio</td></tr>
       <tr><td>Tailwind CSS + shadcn/ui</td><td>Interfaz de usuario</td><td>Desarrollo rápido, componentes accesibles y totalmente personalizables</td></tr>
@@ -1081,36 +963,21 @@
 
   <h3>Pipeline de despliegue</h3>
   <div class="flow-steps">
-    <div class="flow-step">
-      <div class="flow-dot" style="font-size:9pt;">Git</div>
-      <div class="flow-label">Push a<br>rama feature</div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-dot" style="font-size:9pt;">PR</div>
-      <div class="flow-label">Preview URL<br>automática (Vercel)</div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-dot" style="font-size:9pt;">Rev</div>
-      <div class="flow-label">Revisión<br>y aprobación</div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-dot" style="font-size:9pt;">MG</div>
-      <div class="flow-label">Merge<br>a main</div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-dot" style="font-size:9pt;">🚀</div>
-      <div class="flow-label">Deploy a<br>producción</div>
-    </div>
+    <div class="flow-step"><div class="flow-dot" style="font-size:9pt;">Git</div><div class="flow-label">Push a<br>rama feature</div></div>
+    <div class="flow-step"><div class="flow-dot" style="font-size:9pt;">PR</div><div class="flow-label">Preview URL<br>automática</div></div>
+    <div class="flow-step"><div class="flow-dot" style="font-size:9pt;">Rev</div><div class="flow-label">Revisión<br>y aprobación</div></div>
+    <div class="flow-step"><div class="flow-dot" style="font-size:9pt;">MG</div><div class="flow-label">Merge<br>a main</div></div>
+    <div class="flow-step"><div class="flow-dot">🚀</div><div class="flow-label">Deploy a<br>producción</div></div>
   </div>
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      6. MODELO DE DATOS
-════════════════════════════════════════════════════════ -->
+════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
@@ -1119,10 +986,9 @@
     <div class="section-title">Modelo de Datos — Diagrama Entidad-Relación</div>
   </div>
 
-  <p>El esquema relacional fue diseñado e implementado en <strong>Supabase (PostgreSQL 17)</strong>, compuesto por 10 tablas, con Row Level Security habilitado en todas ellas, triggers de auditoría y políticas de acceso por rol.</p>
+  <p>Esquema implementado en <strong>Supabase (PostgreSQL 17)</strong>: 10 tablas, Row Level Security habilitado en todas, triggers de auditoría automática y políticas de acceso por rol.</p>
 
   <div class="er-container">
-
     <div class="er-table">
       <div class="er-table-header">auth.users</div>
       <div class="er-table-body">
@@ -1130,7 +996,6 @@
         <div class="er-field"><span>email</span><span class="er-field-type">text</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">profiles</div>
       <div class="er-table-body">
@@ -1141,7 +1006,6 @@
         <div class="er-field"><span>avatar_url</span><span class="er-field-type">text</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">service_categories</div>
       <div class="er-table-body">
@@ -1151,7 +1015,6 @@
         <div class="er-field"><span>commission_rate</span><span class="er-field-type">numeric</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">providers</div>
       <div class="er-table-body">
@@ -1163,7 +1026,6 @@
         <div class="er-field"><span>document_url</span><span class="er-field-type">text</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">services</div>
       <div class="er-table-body">
@@ -1176,7 +1038,6 @@
         <div class="er-field"><span>status</span><span class="er-field-type">active|inactive…</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">service_images</div>
       <div class="er-table-body">
@@ -1187,7 +1048,6 @@
         <div class="er-field"><span>display_order</span><span class="er-field-type">int</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">bookings</div>
       <div class="er-table-body">
@@ -1200,7 +1060,6 @@
         <div class="er-field"><span>quoted_price</span><span class="er-field-type">numeric</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">contracts</div>
       <div class="er-table-body">
@@ -1213,7 +1072,6 @@
         <div class="er-field"><span>status</span><span class="er-field-type">pending|signed…</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">payments</div>
       <div class="er-table-body">
@@ -1225,7 +1083,6 @@
         <div class="er-field"><span>status</span><span class="er-field-type">pending|paid…</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">reviews</div>
       <div class="er-table-body">
@@ -1233,12 +1090,11 @@
         <div class="er-field"><span class="er-field-fk">FK booking_id</span><span class="er-field-type">uuid</span></div>
         <div class="er-field"><span class="er-field-fk">FK client_id</span><span class="er-field-type">uuid</span></div>
         <div class="er-field"><span class="er-field-fk">FK service_id</span><span class="er-field-type">uuid</span></div>
-        <div class="er-field"><span>rating</span><span class="er-field-type">int (1-5)</span></div>
+        <div class="er-field"><span>rating</span><span class="er-field-type">int (1–5)</span></div>
         <div class="er-field"><span>comment</span><span class="er-field-type">text</span></div>
         <div class="er-field"><span>provider_response</span><span class="er-field-type">text</span></div>
       </div>
     </div>
-
     <div class="er-table">
       <div class="er-table-header">notifications</div>
       <div class="er-table-body">
@@ -1250,14 +1106,11 @@
         <div class="er-field"><span>reference_id</span><span class="er-field-type">uuid</span></div>
       </div>
     </div>
-
   </div>
 
   <h3>Relaciones principales</h3>
   <table>
-    <thead>
-      <tr><th>Relación</th><th>Tipo</th><th>Descripción</th></tr>
-    </thead>
+    <thead><tr><th>Relación</th><th>Tipo</th><th>Descripción</th></tr></thead>
     <tbody>
       <tr><td>auth.users → profiles</td><td>1:1</td><td>Perfil creado automáticamente vía trigger al registrarse</td></tr>
       <tr><td>profiles → providers</td><td>1:1</td><td>Un usuario con rol proveedor tiene un perfil de negocio</td></tr>
@@ -1271,12 +1124,12 @@
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      7. DISEÑO DE INTERFACES
-════════════════════════════════════════════════════════ -->
+════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
@@ -1285,13 +1138,13 @@
     <div class="section-title">Diseño de Interfaces Gráficas de Usuario</div>
   </div>
 
-  <p>El prototipo de Eventia fue desarrollado tomando como referencia visual el modelo de <strong>Despegar.com</strong> — navegación clara, búsqueda prominente al inicio, catálogo en tarjetas y dashboards diferenciados por rol. La identidad visual adopta el violeta <strong>#7C3AED</strong> como color primario para distinguir la marca.</p>
+  <p>El prototipo de Eventia fue desarrollado tomando como referencia visual el modelo de <strong>Despegar.com</strong> — navegación clara, búsqueda prominente, catálogo en tarjetas y dashboards diferenciados por rol. La identidad visual adopta el color <strong>#F09F0F</strong> como color primario de la marca.</p>
 
   <h3>Pantalla 1 — Home / Landing Page</h3>
   <div class="ui-placeholder">
     <div class="ui-placeholder-icon">🏠</div>
     <div class="ui-placeholder-title">Home — Landing Page</div>
-    <div class="ui-placeholder-desc">Insertar captura del prototipo: navbar + hero con buscador + categorías + servicios destacados + sección "Cómo funciona"</div>
+    <div class="ui-placeholder-desc">Insertar captura del prototipo: navbar + hero con buscador + 4 categorías + servicios destacados + sección "Cómo funciona"</div>
   </div>
 
   <h3>Pantalla 2 — Catálogo / Resultados de Búsqueda</h3>
@@ -1304,7 +1157,7 @@
 
 <div class="page">
   <div class="page-header">
-    <div class="page-header-logo">Eventia</div>
+    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
     <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
@@ -1330,7 +1183,7 @@
   </div>
 
   <div class="highlight-box" style="margin-top: 24px;">
-    <p>💡 Las capturas de pantalla del prototipo interactivo se adjuntan como resultado del diseño desarrollado en <strong>Claude Design</strong>, tomando como base las pantallas definidas en la planificación del sprint de diseño.</p>
+    <p>Las capturas de pantalla del prototipo interactivo se adjuntan como resultado del diseño desarrollado en <strong>Claude Design</strong>, tomando como base las 5 pantallas definidas en la planificación del sprint de diseño.</p>
   </div>
 </div>
 
