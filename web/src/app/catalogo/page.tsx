@@ -68,7 +68,6 @@ const HERO_CONFIG: Record<CatKey | "todos", {
 };
 
 const CATS = [
-  { id: "" as Category | "",       label: "Todos",      icon: Tag },
   { id: "local" as Category,       label: "Locales",    icon: Building2 },
   { id: "fotografia" as Category,  label: "Fotografía", icon: Camera },
   { id: "musica" as Category,      label: "Música",     icon: Music },
