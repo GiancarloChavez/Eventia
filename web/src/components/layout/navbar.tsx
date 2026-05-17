@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Home, Building2, Camera, Music, Sparkles, Tag, Map, Briefcase } from "lucide-react";
+import { Home, Building2, Camera, Music, Sparkles, Briefcase } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Inicio",      href: "/",                              icon: Home,      key: "home" },
@@ -12,8 +12,6 @@ const NAV_ITEMS = [
   { label: "Fotografía",  href: "/catalogo?category=fotografia",  icon: Camera,    key: "fotografia" },
   { label: "Música",      href: "/catalogo?category=musica",      icon: Music,     key: "musica" },
   { label: "Decoración",  href: "/catalogo?category=decoracion",  icon: Sparkles,  key: "decoracion" },
-  { label: "Ofertas",     href: "/catalogo",                      icon: Tag,       key: "ofertas" },
-  { label: "Explorar",    href: "/",                              icon: Map,       key: "mapa" },
 ];
 
 export function Navbar() {
@@ -39,7 +37,7 @@ export function Navbar() {
   const activeKey = isHome
     ? "home"
     : isCatalog
-    ? (categoryParam || "ofertas")
+    ? (categoryParam || "")
     : pathname.split("/")[1] || "home";
 
   return (

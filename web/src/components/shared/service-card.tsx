@@ -1,76 +1,120 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import { Star, MapPin, BadgeCheck } from "lucide-react";
 import type { Service } from "@/lib/data";
 import { formatPrice } from "@/lib/data";
-import { StarRating } from "./star-rating";
-import { CategoryBadge } from "./category-badge";
-import { VerifiedBadge } from "./verified-badge";
+
+const CARD_BG = "#141414";
+const GRADIENT = "linear-gradient(to bottom, transparent 28%, rgba(20,20,20,0.72) 56%, #141414 100%)";
 
 export function ServiceCard({ service }: { service: Service }) {
-  const [hov, setHov] = useState(false);
-
   return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      className="bg-white rounded-xl overflow-hidden flex flex-col cursor-pointer transition-all duration-200"
-      style={{
-        border: `1px solid ${hov ? "rgba(243,158,16,0.22)" : "#e5e7eb"}`,
-        transform: hov ? "translateY(-2px)" : "none",
-        boxShadow: hov ? "0 8px 24px rgba(0,0,0,0.12)" : "0 1px 4px rgba(0,0,0,0.06)",
-      }}
-    >
-      <Link href={`/servicios/${service.id}`} className="block">
-        {/* Image */}
-        <div className="relative h-[188px] overflow-hidden flex-shrink-0">
+    <Link href={`/servicios/${service.id}`} className="block group">
+      <div
+        className="rounded-[22px] overflow-hidden flex flex-col"
+        style={{
+          background: CARD_BG,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.35)",
+          transition: "transform 280ms ease, box-shadow 280ms ease",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-6px)";
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 16px 48px rgba(0,0,0,0.5)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 24px rgba(0,0,0,0.35)";
+        }}
+      >
+        {/* Photo */}
+        <div className="relative overflow-hidden flex-shrink-0" style={{ height: 224 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={service.images[0]}
             alt={service.name}
-            className="w-full h-full object-cover transition-transform duration-300"
-            style={{ transform: hov ? "scale(1.05)" : "scale(1)" }}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]"
           />
-          <div className="absolute top-2.5 left-2.5">
-            <CategoryBadge label={service.categoryLabel} />
-          </div>
-          {service.verified && (
-            <div className="absolute top-2.5 right-2.5">
-              <VerifiedBadge small />
-            </div>
-          )}
+          {/* Gradient: transparent → card background */}
+          <div className="absolute inset-0" style={{ background: GRADIENT }} />
         </div>
 
-        {/* Content */}
-        <div className="p-4 flex-1 flex flex-col gap-1">
-          <StarRating value={service.rating} reviews={service.reviews} />
-          <h3 className="text-gray-900 text-[15px] font-bold leading-tight">{service.name}</h3>
-          <p className="text-gray-500 text-[13px]">{service.provider}</p>
-          <p className="text-gray-400 text-[12px] flex items-center gap-1 mb-auto">
-            <MapPin size={12} /> {service.city}
+        {/* Content — negative margin pulls text into gradient zone */}
+        <div className="px-5 pb-5 -mt-12 relative z-10 flex flex-col gap-3">
+          {/* Title */}
+          <h3 className="text-white font-bold leading-snug tracking-[-0.3px]" style={{ fontSize: 18 }}>
+            {service.name}
+          </h3>
+
+          {/* Description */}
+          <p
+            className="text-white/55 leading-relaxed"
+            style={{
+              fontSize: 13,
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {service.shortDesc}
           </p>
 
-          <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-2">
-            <div>
-              <div className="text-gray-300 text-[10px] uppercase tracking-[0.4px]">Desde</div>
-              <div className="text-[#f39e10] text-[18px] font-black leading-tight">
-                {formatPrice(service.price)}
-              </div>
-            </div>
+          {/* Pill tags */}
+          <div className="flex gap-2 flex-wrap">
+            {/* Rating */}
             <span
-              className="border border-[#f39e10] rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-all duration-150"
-              style={{
-                background: hov ? "#f39e10" : "transparent",
-                color: hov ? "#fff" : "#f39e10",
-              }}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-white font-semibold"
+              style={{ background: "rgba(255,255,255,0.11)", fontSize: 12 }}
             >
-              Ver más
+              {service.rating}
+              <span className="flex gap-px">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star
+                    key={i}
+                    size={10}
+                    fill={i <= Math.round(service.rating) ? "#f59e0b" : "rgba(255,255,255,0.2)"}
+                    stroke="none"
+                  />
+                ))}
+              </span>
             </span>
+
+            {/* City */}
+            <span
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-white/70 font-semibold"
+              style={{ background: "rgba(255,255,255,0.11)", fontSize: 12 }}
+            >
+              <MapPin size={10} />
+              {service.city}
+            </span>
+
+            {/* Verified */}
+            {service.verified && (
+              <span
+                className="flex items-center gap-1 rounded-full px-3 py-1.5 text-white/70 font-semibold"
+                style={{ background: "rgba(255,255,255,0.11)", fontSize: 12 }}
+              >
+                <BadgeCheck size={11} style={{ color: "#f59e0b" }} />
+                Verificado
+              </span>
+            )}
+          </div>
+
+          {/* Price + CTA */}
+          <div className="flex flex-col gap-2.5 mt-0.5">
+            <div style={{ fontSize: 11 }} className="text-white/40 uppercase tracking-[0.5px]">
+              Desde{" "}
+              <span className="text-white/75 font-semibold normal-case tracking-normal" style={{ fontSize: 13 }}>
+                {formatPrice(service.price)}
+              </span>
+            </div>
+            <button className="w-full bg-white text-gray-900 font-bold rounded-full py-3 border-none cursor-pointer hover:bg-gray-100 transition-colors duration-200" style={{ fontSize: 14 }}>
+              Reservar ahora
+            </button>
           </div>
         </div>
-      </Link>
-    </div>
+      </div>
+    </Link>
   );
 }
