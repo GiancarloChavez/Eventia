@@ -61,7 +61,7 @@ export default function CatalogPage() {
   }
 
   return (
-    <div className="bg-[#f4f5f7] min-h-screen pt-[68px]">
+    <div className="bg-[#f4f5f7] min-h-screen pt-[72px]">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-200 px-10 py-3">
         <div className="flex items-center gap-2 flex-wrap">
@@ -86,7 +86,7 @@ export default function CatalogPage() {
 
       <div className="grid gap-6 px-10 py-6" style={{ gridTemplateColumns: "260px 1fr" }}>
         {/* Filters sidebar */}
-        <aside className="sticky top-[80px] self-start">
+        <aside className="sticky top-[88px] self-start">
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-gray-900 text-[16px] font-bold">Filtros</h3>
