@@ -261,8 +261,8 @@ export default function CatalogPage() {
               className="rounded-xl text-white text-[14px] font-bold flex items-center gap-2 transition-all cursor-pointer border-none ml-2 shrink-0"
               style={{
                 padding: "0 24px",
-                background: `linear-gradient(135deg, #f59e0b 0%, ${hero.color} 60%, #e88e00 100%)`,
-                boxShadow: `0 4px 20px rgba(243,158,16,0.5), inset 0 1px 0 rgba(255,255,255,0.2)`,
+                background: "linear-gradient(135deg, #f59e0b 0%, #f39e10 52%, #e88e00 100%)",
+                boxShadow: "0 4px 20px rgba(243,158,16,0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
               }}
             >
               <Search size={16} strokeWidth={2.5} />

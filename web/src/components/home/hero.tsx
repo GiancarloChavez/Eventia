@@ -12,7 +12,9 @@ const TABS = [
   { label: "Decoración", cat: "decoracion", icon: Sparkles },
 ];
 
-export function Hero() {
+export type HeroSearchParams = { category: string; city: string; date: string; guests: string };
+
+export function Hero({ onSearch }: { onSearch?: (p: HeroSearchParams) => void }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Locales");
   const [city, setCity] = useState("");
@@ -22,10 +24,14 @@ export function Hero() {
   const activeCat = TABS.find((t) => t.label === activeTab)?.cat ?? "local";
 
   const handleSearch = () => {
-    const params = new URLSearchParams({ category: activeCat });
-    if (city) params.set("city", city);
-    if (date) params.set("date", date);
-    router.push(`/catalogo?${params.toString()}`);
+    if (onSearch) {
+      onSearch({ category: activeCat, city, date, guests });
+    } else {
+      const params = new URLSearchParams({ category: activeCat });
+      if (city) params.set("city", city);
+      if (date) params.set("date", date);
+      router.push(`/catalogo?${params.toString()}`);
+    }
   };
 
   const today = new Date().toISOString().split("T")[0];
