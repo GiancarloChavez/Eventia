@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { SERVICE_SELECT, type DbService } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { ServiceCard } from "@/components/shared/service-card";
 import type { HeroSearchParams } from "./hero";
 
@@ -35,13 +35,14 @@ export function SearchResultsPanel({ params, onClose }: { params: HeroSearchPara
   useEffect(() => {
     async function fetchServices() {
       setLoading(true);
-      let query = supabase
+      const sb = getSupabase();
+      let query = sb
         .from("services")
         .select(SERVICE_SELECT)
         .eq("status", "active");
 
       if (params.category) {
-        const { data: cat } = await supabase
+        const { data: cat } = await sb
           .from("service_categories")
           .select("id")
           .eq("slug", params.category)
@@ -49,7 +50,7 @@ export function SearchResultsPanel({ params, onClose }: { params: HeroSearchPara
         if (cat) query = query.eq("category_id", cat.id);
       }
 
-      if (params.city) query = query.eq("location", params.city);
+      if (params.city) query = query.eq("location", params.city) as typeof query;
 
       const { data } = await query;
       setServices((data as unknown as DbService[]) ?? []);

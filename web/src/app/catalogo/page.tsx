@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, ChevronLeft, ChevronRight, MapPin, Calendar, Users, Camera, Music, Sparkles, Building2, Tag, SlidersHorizontal, X } from "lucide-react";
 import { PERUVIAN_CITIES, SERVICE_SELECT, type Category, type DbService } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { ServiceCard } from "@/components/shared/service-card";
 
 /* ─── Category hero configs ─────────────────────────────────────────── */
@@ -106,13 +106,14 @@ export default function CatalogPage() {
   useEffect(() => {
     async function fetchServices() {
       setLoading(true);
-      let query = supabase
+      const sb = getSupabase();
+      let query = sb
         .from("services")
         .select(SERVICE_SELECT)
         .eq("status", "active");
 
       if (category) {
-        const { data: cat } = await supabase
+        const { data: cat } = await sb
           .from("service_categories")
           .select("id")
           .eq("slug", category)
@@ -120,7 +121,7 @@ export default function CatalogPage() {
         if (cat) query = query.eq("category_id", cat.id);
       }
 
-      if (city) query = query.eq("location", city);
+      if (city) query = query.eq("location", city) as typeof query;
 
       const { data } = await query;
       setServices((data as unknown as DbService[]) ?? []);

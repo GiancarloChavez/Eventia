@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Calendar, Check, Star } from "lucide-react";
 import { SERVICE_SELECT, formatPrice, type DbService } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { StarRating } from "@/components/shared/star-rating";
 import { CategoryBadge } from "@/components/shared/category-badge";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
@@ -28,7 +28,8 @@ export default function DetailPage() {
   useEffect(() => {
     async function fetchService() {
       setLoading(true);
-      const { data } = await supabase
+      const sb = getSupabase();
+      const { data } = await sb
         .from("services")
         .select(SERVICE_SELECT)
         .eq("id", id)
@@ -38,7 +39,7 @@ export default function DetailPage() {
       setService(svc);
 
       if (svc) {
-        const { data: rel } = await supabase
+        const { data: rel } = await sb
           .from("services")
           .select(SERVICE_SELECT)
           .eq("status", "active")

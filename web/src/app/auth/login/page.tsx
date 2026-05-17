@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,7 +19,8 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const sb = getSupabase();
+    const { data, error: signInError } = await sb.auth.signInWithPassword({ email, password });
 
     if (signInError) {
       setError("Correo o contraseña incorrectos.");
@@ -27,7 +28,7 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await sb
       .from("profiles")
       .select("role")
       .eq("id", data.user.id)

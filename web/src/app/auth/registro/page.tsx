@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { Eye, EyeOff, User, Mail, Lock, Building2, Phone, MapPin, ChevronLeft } from "lucide-react";
 import { PERUVIAN_CITIES } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 const CATEGORIES = [
   { value: "local",      label: "Local para eventos" },
@@ -47,7 +47,7 @@ function RegistroForm() {
     setError(null);
     setLoading(true);
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { error: signUpError } = await getSupabase().auth.signUp({
       email: form.email,
       password: form.password,
       options: {
