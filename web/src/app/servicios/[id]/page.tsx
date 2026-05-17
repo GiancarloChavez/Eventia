@@ -56,7 +56,7 @@ export default function DetailPage() {
   }
 
   return (
-    <div className="bg-[#f4f5f7] min-h-screen">
+    <div className="bg-[#f4f5f7] min-h-screen pt-[68px]">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-200 px-10 py-3">
         <div className="flex gap-2 items-center">
@@ -215,7 +215,7 @@ export default function DetailPage() {
           </div>
 
           {/* Right: Booking widget */}
-          <aside className="sticky top-[84px]">
+          <aside className="sticky top-[80px]">
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden" style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.1)" }}>
               <div className="bg-[#f39e10] px-6 py-5">
                 <div className="text-white/80 text-[12px] uppercase tracking-[0.6px]">Precio desde</div>

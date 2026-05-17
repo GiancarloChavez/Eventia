@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Check, Building2, Camera, Music, Sparkles } from "lucide-react";
+import { Search, Building2, Camera, Music, Sparkles } from "lucide-react";
 import { PERUVIAN_CITIES } from "@/lib/data";
 
 const TABS = [
-  { label: "Locales",     cat: "local",       icon: Building2 },
-  { label: "Fotografía",  cat: "fotografia",  icon: Camera },
-  { label: "Música",      cat: "musica",       icon: Music },
-  { label: "Decoración",  cat: "decoracion",  icon: Sparkles },
+  { label: "Locales",    cat: "local",      icon: Building2 },
+  { label: "Fotografía", cat: "fotografia", icon: Camera },
+  { label: "Música",     cat: "musica",     icon: Music },
+  { label: "Decoración", cat: "decoracion", icon: Sparkles },
 ];
 
 export function Hero() {
@@ -32,48 +32,72 @@ export function Hero() {
 
   return (
     <section
-      className="relative flex flex-col items-center justify-center px-10"
+      className="relative flex flex-col items-center justify-center"
       style={{
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.54) 0%, rgba(0,0,0,0.32) 50%, rgba(0,0,0,0.58) 100%), url('/hero.jpg')`,
+        minHeight: "92vh",
+        backgroundImage: [
+          "linear-gradient(180deg,",
+          "  rgba(0,0,0,0.52) 0%,",
+          "  rgba(0,0,0,0.28) 45%,",
+          "  rgba(0,0,0,0.62) 100%",
+          "), url('/hero.jpg')",
+        ].join(""),
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        minHeight: 400,
-        paddingTop: 56,
-        paddingBottom: 130,
+        paddingTop: 100,
+        paddingLeft: 40,
+        paddingRight: 40,
+        paddingBottom: 80,
       }}
     >
-      {/* Trust chips */}
-      <div className="flex gap-5 mb-6 flex-wrap justify-center">
-        {["Pago seguro", "Proveedores verificados", "Soporte 24/7"].map((label) => (
-          <div key={label} className="flex items-center gap-1.5 text-white/90 text-[13px]">
-            <span className="text-green-400">
-              <Check size={13} strokeWidth={3} />
-            </span>
+      {/* Trust badges */}
+      <div className="flex gap-6 mb-8 flex-wrap justify-center">
+        {[
+          { dot: "#4ade80", label: "Pago 100% seguro" },
+          { dot: "#f59e0b", label: "Proveedores verificados" },
+          { dot: "#60a5fa", label: "Soporte 24/7" },
+        ].map(({ dot, label }) => (
+          <div key={label} className="flex items-center gap-2 text-white/90 text-[13px]">
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
             {label}
           </div>
         ))}
       </div>
 
-      <h1 className="text-white text-[52px] font-black text-center mb-2.5 leading-[1.1] tracking-[-1.5px] [text-shadow:0_2px_12px_rgba(0,0,0,0.3)]">
-        Tu evento perfecto,<br />en un solo lugar
+      {/* Headline */}
+      <h1
+        className="text-white font-black text-center leading-[1.06] tracking-[-2px] mb-4"
+        style={{ fontSize: "clamp(40px, 5.5vw, 64px)", textShadow: "0 2px 24px rgba(0,0,0,0.35)" }}
+      >
+        Tu evento perfecto,
+        <br />
+        <span
+          style={{
+            background: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 50%, #f39e10 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
+          en un solo lugar
+        </span>
       </h1>
-      <p className="text-white/80 text-[17px] text-center max-w-[560px] leading-relaxed">
-        Busca, compara y contrata locales, fotógrafos, DJs y decoradores para tu quinceaños, boda o graduación.
+
+      <p className="text-white/75 text-[17px] text-center max-w-[560px] leading-relaxed mb-10">
+        Busca, compara y contrata locales, fotógrafos, DJs y decoradores
+        para tu quinceaños, boda o graduación.
       </p>
 
-      {/* Floating search widget */}
-      <div
-        className="absolute bottom-[-76px] left-1/2 -translate-x-1/2 z-10"
-        style={{ width: "calc(100% - 80px)", maxWidth: 880 }}
-      >
-        {/* Dark pill tabs */}
-        <div className="flex justify-center mb-2.5">
+      {/* Search widget */}
+      <div className="w-full max-w-[900px]">
+        {/* Category tabs */}
+        <div className="flex justify-center mb-3">
           <div
-            className="inline-flex items-center gap-0.5 rounded-full p-1.5"
+            className="inline-flex items-center gap-1 p-1.5 rounded-full"
             style={{
-              background: "rgba(14,14,22,0.95)",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+              background: "rgba(10,10,18,0.88)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)",
             }}
           >
             {TABS.map((tab) => {
@@ -83,17 +107,17 @@ export function Hero() {
                 <button
                   key={tab.label}
                   onClick={() => setActiveTab(tab.label)}
-                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-full border-none text-[14px] font-medium transition-all duration-150 cursor-pointer whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-[13px] font-medium transition-all duration-200 cursor-pointer border-none whitespace-nowrap"
                   style={{
-                    background: active ? "#fff" : "transparent",
-                    color: active ? "#111827" : "rgba(255,255,255,0.82)",
-                    fontWeight: active ? 700 : 500,
+                    background: active
+                      ? "linear-gradient(135deg, #fff 0%, #fffdf7 100%)"
+                      : "transparent",
+                    color: active ? "#111827" : "rgba(255,255,255,0.75)",
+                    fontWeight: active ? 700 : 400,
+                    boxShadow: active ? "0 2px 12px rgba(0,0,0,0.18)" : "none",
                   }}
                 >
-                  <Icon
-                    size={16}
-                    className={active ? "text-[#f39e10]" : "text-white/60"}
-                  />
+                  <Icon size={15} style={{ color: active ? "#f39e10" : "rgba(255,255,255,0.55)" }} strokeWidth={1.8} />
                   {tab.label}
                 </button>
               );
@@ -101,12 +125,15 @@ export function Hero() {
           </div>
         </div>
 
-        {/* White search bar */}
+        {/* Search bar */}
         <div
-          className="bg-white rounded-2xl flex items-stretch px-5 py-4"
-          style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.22)" }}
+          className="bg-white rounded-2xl flex items-stretch"
+          style={{
+            padding: "8px 8px 8px 0",
+            boxShadow: "0 16px 64px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.15)",
+          }}
         >
-          <SearchField label="Ciudad" flex="1.4">
+          <Field label="Ciudad" flex="1.4">
             <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
@@ -118,11 +145,11 @@ export function Hero() {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
-          </SearchField>
+          </Field>
 
-          <div className="w-px bg-gray-200 mx-2 self-stretch" />
+          <Divider />
 
-          <SearchField label="Fecha del evento" flex="1.2">
+          <Field label="Fecha del evento" flex="1.2">
             <input
               type="date"
               value={date}
@@ -132,11 +159,11 @@ export function Hero() {
               style={{ color: date ? "#111827" : "#9ca3af" }}
               suppressHydrationWarning
             />
-          </SearchField>
+          </Field>
 
-          <div className="w-px bg-gray-200 mx-2 self-stretch" />
+          <Divider />
 
-          <SearchField label="Invitados" flex="0.9">
+          <Field label="Invitados" flex="0.9">
             <select
               value={guests}
               onChange={(e) => setGuests(e.target.value)}
@@ -149,33 +176,49 @@ export function Hero() {
               <option value="100-200">100 – 200</option>
               <option value="200+">200+</option>
             </select>
-          </SearchField>
+          </Field>
 
           <button
             onClick={handleSearch}
-            className="bg-[#f39e10] hover:bg-[#d4870e] text-white rounded-xl px-7 text-[15px] font-bold flex items-center gap-2 ml-3 shrink-0 transition-colors cursor-pointer border-none"
+            className="rounded-xl text-white text-[15px] font-bold flex items-center gap-2 transition-all cursor-pointer border-none ml-2 shrink-0"
+            style={{
+              padding: "0 28px",
+              background: "linear-gradient(135deg, #f59e0b 0%, #f39e10 55%, #e88e00 100%)",
+              boxShadow: "0 4px 20px rgba(243,158,16,0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
+            }}
           >
-            <Search size={16} /> Buscar
+            <Search size={16} strokeWidth={2.5} />
+            Buscar
           </button>
+        </div>
+
+        {/* Quick stats */}
+        <div className="flex justify-center gap-8 mt-5">
+          {[
+            { val: "+2,400", lbl: "proveedores" },
+            { val: "+15K",   lbl: "eventos" },
+            { val: "4.8 ★", lbl: "valoración" },
+          ].map(({ val, lbl }) => (
+            <div key={lbl} className="flex items-center gap-1.5 text-white/60 text-[13px]">
+              <span className="text-white/90 font-bold">{val}</span>
+              {lbl}
+            </div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-function SearchField({
-  label,
-  flex,
-  children,
-}: {
-  label: string;
-  flex: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, flex, children }: { label: string; flex: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 px-3.5" style={{ flex }}>
-      <div className="text-gray-300 text-[11px] font-bold uppercase tracking-[0.5px]">{label}</div>
+    <div className="flex flex-col gap-1 px-4 py-3" style={{ flex }}>
+      <span className="text-gray-400 text-[11px] font-bold uppercase tracking-[0.6px]">{label}</span>
       {children}
     </div>
   );
+}
+
+function Divider() {
+  return <div className="w-px bg-gray-100 self-stretch my-3" />;
 }

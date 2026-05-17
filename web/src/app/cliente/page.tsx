@@ -32,9 +32,9 @@ export default function ClientDashboard() {
   };
 
   return (
-    <div className="bg-[#f4f5f7] min-h-screen p-6 flex gap-6">
+    <div className="bg-[#f4f5f7] min-h-screen px-6 pb-6 pt-[92px] flex gap-6">
       {/* Sidebar */}
-      <aside className="w-[220px] shrink-0 bg-white border border-gray-200 rounded-2xl p-4 self-start sticky top-20">
+      <aside className="w-[220px] shrink-0 bg-white border border-gray-200 rounded-2xl p-4 self-start sticky top-[84px]">
         <div className="flex flex-col items-center py-3 pb-5 border-b border-gray-100 mb-3">
           <div className="w-14 h-14 rounded-full bg-[rgba(243,158,16,0.08)] border-2 border-[rgba(243,158,16,0.22)] flex items-center justify-center mb-2.5">
             <span className="text-[#f39e10] font-black text-[22px]">V</span>
