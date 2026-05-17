@@ -29,7 +29,7 @@ export function Navbar() {
   }, []);
 
   // Home at top → dark transparent; everywhere else → consistent glass
-  const heroMode = isHome && !scrolled;
+  const heroMode = !scrolled && (isHome || pathname.startsWith("/catalogo"));
 
   const activeKey =
     pathname === "/" ? "home"
@@ -59,9 +59,9 @@ export function Navbar() {
           <Image
             src={heroMode ? "/logo-white.png" : "/logo.png"}
             alt="Eventia"
-            width={150}
-            height={48}
-            style={{ width: "auto", height: "44px" }}
+            width={200}
+            height={64}
+            style={{ width: "auto", height: "54px" }}
             priority
           />
         </Link>
