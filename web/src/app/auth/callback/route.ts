@@ -29,11 +29,15 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
+    if (!error && user) {
+      // For OAuth flows (Google), the role comes as a URL param since we
+      // can't embed it in the OAuth metadata at auth time. Update both
+      // auth metadata and profiles so the trigger creates the providers row.
       if (role) {
         await supabase.auth.updateUser({ data: { role } });
+        await supabase.from("profiles").update({ role }).eq("id", user.id);
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
