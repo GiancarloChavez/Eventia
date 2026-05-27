@@ -74,9 +74,15 @@ export default function ProviderDashboard() {
       setProviderStatus(provider.status);
       setOnboardingStep(provider.onboarding_step);
 
-      // Step 1 complete → go directly to step 2 (business profile)
-      if (provider.status === "draft" && provider.onboarding_step === 1) {
-        router.replace("/proveedor/onboarding/negocio");
+      // During onboarding redirect to the current pending step
+      if (provider.status === "draft" && provider.onboarding_step < 5) {
+        const stepRoutes: Record<number, string> = {
+          1: "/proveedor/onboarding/negocio",
+          2: "/proveedor/onboarding/servicio",
+          3: "/proveedor/onboarding/pagos",
+          4: "/proveedor/onboarding/revision",
+        };
+        router.replace(stepRoutes[provider.onboarding_step] ?? "/proveedor/onboarding/negocio");
         return;
       }
 

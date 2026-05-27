@@ -152,7 +152,7 @@ export default function NegocioPage() {
       return;
     }
 
-    router.push("/proveedor");
+    router.push("/proveedor/onboarding/servicio");
   };
 
   if (prefilling) {
