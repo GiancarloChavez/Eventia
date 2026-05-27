@@ -6,8 +6,14 @@ import type { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const role = searchParams.get("role");
-  const next = searchParams.get("next") ?? "/";
+
+  // Role: URL param (email verification flow) takes priority over cookie (OAuth flow)
+  const urlRole  = searchParams.get("role");
+  const cookieRole = request.cookies.get("eventia_oauth_role")?.value;
+  const role = urlRole ?? cookieRole;
+
+  const defaultNext = role === "provider" ? "/proveedor" : "/";
+  const next = searchParams.get("next") ?? defaultNext;
 
   if (code) {
     const cookieStore = await cookies();
@@ -32,14 +38,17 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && user) {
-      // For OAuth flows (Google), the role comes as a URL param since we
-      // can't embed it in the OAuth metadata at auth time. Update both
-      // auth metadata and profiles so the trigger creates the providers row.
+      // For OAuth: update both auth metadata and profiles.role so the
+      // on_profile_becomes_provider trigger fires and creates the providers row.
       if (role) {
         await supabase.auth.updateUser({ data: { role } });
         await supabase.from("profiles").update({ role }).eq("id", user.id);
       }
-      return NextResponse.redirect(`${origin}${next}`);
+
+      const response = NextResponse.redirect(`${origin}${next}`);
+      // Clear the OAuth intent cookie
+      response.cookies.set("eventia_oauth_role", "", { maxAge: 0, path: "/" });
+      return response;
     }
   }
 

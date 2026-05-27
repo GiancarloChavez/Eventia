@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Grid, FileText, Calendar, DollarSign, User, MapPin, Check, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Grid, FileText, Calendar, DollarSign, User, MapPin, Check, X, AlertCircle, Clock } from "lucide-react";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import type { ServiceStatus } from "@/lib/data";
+import { getSupabase } from "@/lib/supabase";
 
 const REQUESTS = [
   { id: "SOL-021", client: "Fernanda López",  event: "Quinceaños", date: "12 Jul 2025", guests: 180, city: "Lima",        status: "Pendiente"  as ServiceStatus, budget: 32000, received: "Hace 2h" },
@@ -41,7 +44,71 @@ const TITLES: Record<string, string> = {
 };
 
 export default function ProviderDashboard() {
-  const [active, setActive] = useState("solicitudes");
+  const router = useRouter();
+  const [active, setActive]               = useState("solicitudes");
+  const [authReady, setAuthReady]         = useState(false);
+  const [providerStatus, setProviderStatus] = useState<string>("approved");
+  const [onboardingStep, setOnboardingStep] = useState(5);
+
+  useEffect(() => {
+    const check = async () => {
+      const supabase = getSupabase();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.replace("/auth");
+        return;
+      }
+
+      const { data: provider } = await supabase
+        .from("providers")
+        .select("status, onboarding_step")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (!provider) {
+        router.replace("/auth/registro?tipo=proveedor");
+        return;
+      }
+
+      setProviderStatus(provider.status);
+      setOnboardingStep(provider.onboarding_step);
+
+      // Step 1 complete → go directly to step 2 (business profile)
+      if (provider.status === "draft" && provider.onboarding_step === 1) {
+        router.replace("/proveedor/onboarding/negocio");
+        return;
+      }
+
+      setAuthReady(true);
+    };
+    check();
+  }, [router]);
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f5f7]">
+        <div className="w-8 h-8 rounded-full border-2 border-[#f39e10] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  // Awaiting admin approval
+  if (providerStatus === "pending_review") {
+    return (
+      <div className="min-h-screen bg-[#f4f5f7] flex items-center justify-center px-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-10 max-w-[440px] w-full text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-4">
+            <Clock size={26} style={{ color: "#f39e10" }} strokeWidth={1.6} />
+          </div>
+          <h2 className="text-gray-900 text-[20px] font-black mb-2">Solicitud en revisión</h2>
+          <p className="text-gray-500 text-[14px] leading-relaxed">
+            Recibimos tu solicitud. Nuestro equipo la revisará en un plazo de 48 horas hábiles y te notificaremos por correo.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#f4f5f7] min-h-screen px-6 pb-6 pt-[96px] flex gap-6">
@@ -82,6 +149,24 @@ export default function ProviderDashboard() {
 
       {/* Main */}
       <div className="flex-1 min-w-0">
+        {/* Incomplete onboarding banner (steps 2–4) */}
+        {providerStatus === "draft" && onboardingStep < 5 && (
+          <div
+            className="flex items-center gap-3 rounded-xl px-4 py-3 mb-5 text-[13px]"
+            style={{ background: "rgba(243,158,16,0.08)", border: "1px solid rgba(243,158,16,0.22)" }}
+          >
+            <AlertCircle size={16} style={{ color: "#f39e10" }} className="shrink-0" />
+            <span className="text-gray-700 flex-1">
+              Tu perfil no está publicado aún. Completa los pasos restantes para aparecer en el catálogo.
+            </span>
+            <Link
+              href="/proveedor/onboarding/negocio"
+              className="font-semibold text-[#f39e10] hover:underline shrink-0"
+            >
+              Continuar →
+            </Link>
+          </div>
+        )}
         <div className="mb-6">
           <h1 className="text-gray-900 text-[24px] font-black mb-1">{TITLES[active]}</h1>
           <div className="flex items-center gap-2">
