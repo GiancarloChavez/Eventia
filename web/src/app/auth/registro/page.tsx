@@ -197,12 +197,10 @@ function RegistroForm() {
 
   const handleGoogleOAuth = async () => {
     setOauthLoading(true);
-    // Cookie survives the OAuth redirect chain; query params on redirectTo can be stripped by Supabase
-    document.cookie = "eventia_oauth_role=provider; path=/; max-age=300; samesite=lax";
     const { error: oauthError } = await getSupabase().auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback/provider`,
       },
     });
     if (oauthError) {
@@ -227,7 +225,7 @@ function RegistroForm() {
     setLoading(true);
 
     const redirectTo = isProvider
-      ? `${window.location.origin}/auth/callback?role=provider&next=/proveedor`
+      ? `${window.location.origin}/auth/callback/provider`
       : undefined;
 
     const { error: signUpError } = await getSupabase().auth.signUp({
@@ -267,7 +265,7 @@ function RegistroForm() {
       type:  "signup",
       email: form.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?role=provider&next=/proveedor`,
+        emailRedirectTo: `${window.location.origin}/auth/callback/provider`,
       },
     });
   };
