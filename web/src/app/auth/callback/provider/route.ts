@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -37,6 +38,16 @@ export async function GET(request: NextRequest) {
       // on_profile_becomes_provider trigger creates the providers row.
       await supabase.auth.updateUser({ data: { role: "provider" } });
       await supabase.from("profiles").update({ role: "provider" }).eq("id", user.id);
+
+      // Explicitly upsert the providers row so /proveedor always finds it,
+      // regardless of whether the DB trigger has fired yet.
+      const adminSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      await adminSupabase
+        .from("providers")
+        .upsert({ user_id: user.id }, { onConflict: "user_id", ignoreDuplicates: true });
 
       return NextResponse.redirect(`${origin}/proveedor`);
     }

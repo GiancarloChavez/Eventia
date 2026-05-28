@@ -33,26 +33,31 @@ export async function POST() {
 
   let accountId = provider.stripe_account_id as string | null;
 
-  if (!accountId) {
-    const account = await getStripe().accounts.create({
-      type: "express",
-      country: "PE",
-      email: session.user.email,
+  try {
+    if (!accountId) {
+      const account = await getStripe().accounts.create({
+        type: "express",
+        country: "PE",
+        email: session.user.email,
+      });
+      accountId = account.id;
+      await supabase
+        .from("providers")
+        .update({ stripe_account_id: accountId })
+        .eq("id", provider.id);
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+    const accountLink = await getStripe().accountLinks.create({
+      account: accountId,
+      refresh_url: `${appUrl}/proveedor/onboarding/pagos`,
+      return_url: `${appUrl}/api/stripe/connect/callback`,
+      type: "account_onboarding",
     });
-    accountId = account.id;
-    await supabase
-      .from("providers")
-      .update({ stripe_account_id: accountId })
-      .eq("id", provider.id);
+
+    return NextResponse.json({ url: accountLink.url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al conectar con Stripe.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
-  const accountLink = await getStripe().accountLinks.create({
-    account: accountId,
-    refresh_url: `${appUrl}/proveedor/onboarding/pagos`,
-    return_url: `${appUrl}/api/stripe/connect/callback`,
-    type: "account_onboarding",
-  });
-
-  return NextResponse.json({ url: accountLink.url });
 }
