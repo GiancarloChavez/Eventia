@@ -31,9 +31,24 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
+    let user = null;
 
-    if (!error && user) {
+    const { data: exchangeData, error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code);
+
+    if (!exchangeError && exchangeData.user) {
+      user = exchangeData.user;
+    } else {
+      // Exchange failed (e.g. PKCE verifier mismatch on double-click).
+      // Fall back to an existing session — the user may already be authenticated.
+      console.error("[callback/provider] exchange error:", exchangeError?.message);
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user) {
+        user = sessionData.session.user;
+      }
+    }
+
+    if (user) {
       // Set role in both auth metadata and profiles so the
       // on_profile_becomes_provider trigger creates the providers row.
       await supabase.auth.updateUser({ data: { role: "provider" } });

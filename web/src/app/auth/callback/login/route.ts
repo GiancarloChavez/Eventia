@@ -28,9 +28,22 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
+  let user = null;
 
-  if (error || !user) {
+  const { data: exchangeData, error: exchangeError } =
+    await supabase.auth.exchangeCodeForSession(code);
+
+  if (!exchangeError && exchangeData.user) {
+    user = exchangeData.user;
+  } else {
+    console.error("[callback/login] exchange error:", exchangeError?.message);
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData.session?.user) {
+      user = sessionData.session.user;
+    }
+  }
+
+  if (!user) {
     return NextResponse.redirect(`${origin}/auth/login?error=oauth_error`);
   }
 
