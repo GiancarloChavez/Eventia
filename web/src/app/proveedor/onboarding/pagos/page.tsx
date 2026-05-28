@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Check, CreditCard, ShieldCheck, Zap, AlertCircle } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
@@ -55,7 +55,7 @@ function WizardProgress({ current }: { current: number }) {
 
 // ── Page ────────────────────────────────────────────────────
 
-export default function PagosPage() {
+function PagosContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const incomplete   = searchParams.get("incomplete") === "1";
@@ -246,5 +246,13 @@ export default function PagosPage() {
         información bancaria.
       </p>
     </div>
+  );
+}
+
+export default function PagosPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-24"><div className="w-7 h-7 rounded-full border-2 border-[#f39e10] border-t-transparent animate-spin" /></div>}>
+      <PagosContent />
+    </Suspense>
   );
 }
