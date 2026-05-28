@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eventia — Presentación Ejecutiva 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;700;800;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================
+       EVENTIA — PRESENTACIÓN EJECUTIVA 2026
+       Estilo: Dark Startup Minimal
+       Paleta: #0D0D0D · #F09F0F · #FFFFFF
+       Fuentes: Raleway 900 (display) + DM Sans (body)
+       ============================================ */
+
+    /* === VARIABLES === */
+    :root {
+      --bg:           #0D0D0D;
+      --bg-card:      #141414;
+      --bg-elevated:  #1A1A1A;
+      --accent:       #F09F0F;
+      --accent-dim:   rgba(240,159,15,0.12);
+      --accent-glow:  rgba(240,159,15,0.07);
+      --text-primary: #FFFFFF;
+      --text-secondary: #7A7A7A;
+      --text-muted:   #3A3A3A;
+      --border:       rgba(255,255,255,0.06);
+
+      --font-display: 'Raleway', sans-serif;
+      --font-body:    'DM Sans', sans-serif;
+
+      /* Scales — ALWAYS clamp() */
+      --title-size:   clamp(2.2rem, 6.5vw, 6.5rem);
+      --h2-size:      clamp(1.6rem, 3.8vw, 3.4rem);
+      --h3-size:      clamp(0.9rem, 1.6vw, 1.15rem);
+      --body-size:    clamp(0.78rem, 1.3vw, 1rem);
+      --small-size:   clamp(0.62rem, 0.9vw, 0.76rem);
+      --label-size:   clamp(0.58rem, 0.8vw, 0.68rem);
+
+      --slide-padding: clamp(1.8rem, 4.5vw, 4.5rem);
+      --content-gap:   clamp(0.8rem, 2vw, 2rem);
+      --ease-expo:     cubic-bezier(0.16,1,0.3,1);
+      --dur:           0.65s;
+    }
+
+    /* === RESET === */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    /* === VIEWPORT BASE (viewport-base.css) === */
+    html, body { height:100%; overflow-x:hidden; }
+    html { scroll-snap-type:y mandatory; scroll-behavior:smooth; }
+
+    .slide {
+      width:100vw; height:100vh; height:100dvh;
+      overflow:hidden; scroll-snap-align:start;
+      display:flex; flex-direction:column; position:relative;
+    }
+    .slide-content {
+      flex:1; display:flex; flex-direction:column;
+      justify-content:center; max-height:100%; overflow:hidden;
+      padding:0 var(--slide-padding) var(--slide-padding);
+    }
+    img, .image-container {
+      max-width:100%; max-height:min(50vh,400px); object-fit:contain;
+    }
+
+    @media (max-height:700px) {
+      :root {
+        --slide-padding: clamp(0.75rem,3vw,2rem);
+        --content-gap:   clamp(0.4rem,1.5vw,1rem);
+        --title-size:    clamp(1.2rem,4.5vw,2.4rem);
+        --h2-size:       clamp(1rem,3vw,1.7rem);
+      }
+    }
+    @media (max-height:600px) {
+      :root {
+        --slide-padding: clamp(0.5rem,2.5vw,1.5rem);
+        --h2-size:       clamp(0.9rem,2.5vw,1.4rem);
+        --body-size:     clamp(0.68rem,1.1vw,0.88rem);
+      }
+      .nav-dots, .keyboard-hint { display:none; }
+    }
+    @media (max-height:500px) {
+      :root {
+        --title-size: clamp(1rem,3.5vw,1.5rem);
+        --h2-size:    clamp(0.85rem,2vw,1.2rem);
+      }
+    }
+    @media (max-width:600px) {
+      :root { --title-size: clamp(1.3rem,7vw,2.5rem); }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *, *::before, *::after {
+        animation-duration:0.01ms !important;
+        transition-duration:0.2s !important;
+      }
+      html { scroll-behavior:auto; }
+    }
+
+    /* === BASE === */
+    body {
+      background:var(--bg);
+      color:var(--text-primary);
+      font-family:var(--font-body);
+      overflow-y:scroll;
+    }
+
+    /* === ANIMATIONS === */
+    .reveal {
+      opacity:0; transform:translateY(24px);
+      transition: opacity var(--dur) var(--ease-expo),
+                  transform var(--dur) var(--ease-expo);
+    }
+    .reveal-left {
+      opacity:0; transform:translateX(-28px);
+      transition: opacity var(--dur) var(--ease-expo),
+                  transform var(--dur) var(--ease-expo);
+    }
+    .reveal-scale {
+      opacity:0; transform:scale(0.93);
+      transition: opacity 0.55s var(--ease-expo),
+                  transform 0.55s var(--ease-expo);
+    }
+    .slide.visible .reveal,
+    .slide.visible .reveal-left,
+    .slide.visible .reveal-scale { opacity:1; transform:none; }
+
+    .d1 { transition-delay:0.04s; }
+    .d2 { transition-delay:0.13s; }
+    .d3 { transition-delay:0.22s; }
+    .d4 { transition-delay:0.31s; }
+    .d5 { transition-delay:0.40s; }
+    .d6 { transition-delay:0.49s; }
+
+    /* === SHARED ELEMENTS === */
+
+    /* Orange radial glow — every slide */
+    .slide::before {
+      content:'';
+      position:absolute; inset:0;
+      background: radial-gradient(ellipse 65% 55% at 95% 5%,
+        var(--accent-glow) 0%, transparent 58%);
+      pointer-events:none; z-index:0;
+    }
+    .slide > * { position:relative; z-index:1; }
+
+    /* Faded large slide number */
+    .slide-num {
+      position:absolute;
+      bottom:clamp(0.5rem,2vh,2rem);
+      right:var(--slide-padding);
+      font-family:var(--font-display);
+      font-weight:900;
+      font-size:clamp(5rem,13vw,11rem);
+      color:rgba(255,255,255,0.022);
+      line-height:1; letter-spacing:-0.04em;
+      user-select:none; z-index:0;
+    }
+
+    /* Top header on every content slide */
+    .slide-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:clamp(1rem,2.5vh,1.8rem) var(--slide-padding) 0;
+    }
+
+    .eventia-mark {
+      display:flex; align-items:center;
+      gap:clamp(5px,0.8vw,8px);
+    }
+    .eventia-mark .mark-svg { width:clamp(14px,2vw,18px); height:clamp(14px,2vw,18px); }
+    .eventia-mark .mark-text {
+      font-family:var(--font-display); font-weight:700;
+      font-size:clamp(0.8rem,1.4vw,1rem);
+      color:var(--text-primary); letter-spacing:-0.01em;
+    }
+
+    .section-label {
+      font-family:var(--font-display); font-weight:700;
+      font-size:var(--label-size); letter-spacing:0.14em;
+      text-transform:uppercase; color:var(--text-muted);
+    }
+
+    /* Badge pill */
+    .badge {
+      display:inline-flex; align-items:center;
+      font-family:var(--font-display); font-weight:700;
+      font-size:var(--label-size); letter-spacing:0.1em;
+      text-transform:uppercase; color:var(--accent);
+      background:var(--accent-dim);
+      padding:4px 10px; border-radius:4px; width:fit-content;
+    }
+
+    /* Display headings */
+    .h-display {
+      font-family:var(--font-display); font-weight:900;
+      font-size:var(--title-size); line-height:0.93;
+      letter-spacing:-0.03em; color:var(--text-primary);
+    }
+    .h2-display {
+      font-family:var(--font-display); font-weight:900;
+      font-size:var(--h2-size); line-height:0.96;
+      letter-spacing:-0.025em; color:var(--text-primary);
+    }
+    .accent { color:var(--accent); }
+
+    .lead {
+      font-size:var(--body-size); color:var(--text-secondary);
+      line-height:1.65; max-width:54ch;
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      position:fixed; top:0; left:0; height:2px;
+      background:var(--accent); z-index:2000;
+      transition:width 0.3s ease; width:0%;
+    }
+
+    /* Nav dots */
+    .nav-dots {
+      position:fixed; right:clamp(10px,2vw,22px); top:50%;
+      transform:translateY(-50%);
+      display:flex; flex-direction:column; gap:7px; z-index:2000;
+    }
+    .nav-dot {
+      width:5px; height:5px; border-radius:50%;
+      background:var(--text-muted); cursor:pointer;
+      transition:all 0.3s ease; border:none;
+    }
+    .nav-dot.active { background:var(--accent); transform:scale(1.5); }
+
+    .keyboard-hint {
+      position:fixed; bottom:clamp(10px,1.8vh,20px); left:50%;
+      transform:translateX(-50%);
+      font-size:var(--small-size); color:var(--text-muted);
+      z-index:2000; pointer-events:none; letter-spacing:0.05em;
+    }
+
+    /* ============================================
+       SLIDE 1 — COVER
+       ============================================ */
+    .slide-cover { background:var(--bg); }
+
+    .cover-inner {
+      padding:var(--slide-padding);
+      display:flex; flex-direction:column;
+      justify-content:center; height:100%;
+      gap:clamp(0.8rem,2vh,1.6rem);
+    }
+
+    .cover-logomark {
+      display:flex; align-items:center;
+      gap:clamp(8px,1.2vw,14px);
+      margin-bottom:clamp(0.5rem,2vh,1.5rem);
+    }
+    .cover-logomark .logo-svg {
+      width:clamp(28px,4vw,50px);
+      height:clamp(28px,4vw,50px);
+    }
+    .cover-logomark .logo-name {
+      font-family:var(--font-display); font-weight:800;
+      font-size:clamp(1.3rem,2.8vw,2.4rem);
+      color:var(--text-primary); letter-spacing:-0.02em;
+    }
+
+    .cover-tagline {
+      font-family:var(--font-display); font-weight:500;
+      font-size:clamp(0.8rem,1.6vw,1.2rem);
+      color:var(--text-secondary); letter-spacing:0.2em;
+      text-transform:uppercase;
+    }
+    .cover-tagline .sep {
+      color:var(--accent); margin:0 clamp(4px,0.8vw,8px);
+      font-weight:700;
+    }
+
+    .cover-meta {
+      display:flex; align-items:center;
+      gap:clamp(0.8rem,1.8vw,1.8rem);
+      margin-top:clamp(0.5rem,2vh,1.5rem);
+    }
+    .cover-meta-item {
+      font-size:var(--small-size); color:var(--text-muted);
+      letter-spacing:0.06em; text-transform:uppercase;
+    }
+    .cover-meta-item strong { color:var(--text-secondary); font-weight:500; }
+    .cover-meta-sep {
+      width:1px; height:clamp(10px,1.5vh,16px);
+      background:var(--text-muted); opacity:0.35;
+    }
+
+    /* ============================================
+       SLIDE 2 — EL PROBLEMA
+       ============================================ */
+    .problem-grid {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:clamp(0.5rem,1vw,0.9rem);
+      margin-top:clamp(0.6rem,1.5vh,1.2rem);
+    }
+    .problem-card {
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:8px; padding:clamp(0.9rem,1.8vw,1.4rem);
+    }
+    .problem-num {
+      font-family:var(--font-display); font-weight:900;
+      font-size:clamp(1.6rem,3.5vw,2.8rem);
+      color:var(--accent); opacity:0.35;
+      line-height:1; letter-spacing:-0.04em;
+    }
+    .problem-card h3 {
+      font-family:var(--font-display); font-weight:800;
+      font-size:var(--h3-size); color:var(--text-primary);
+      margin-top:clamp(0.2rem,0.6vh,0.5rem); letter-spacing:-0.01em;
+    }
+    .problem-card p {
+      font-size:clamp(0.7rem,1.05vw,0.84rem);
+      color:var(--text-secondary); line-height:1.5;
+      margin-top:clamp(0.15rem,0.4vh,0.35rem);
+    }
+
+    /* ============================================
+       SLIDE 3 — LA SOLUCIÓN
+       ============================================ */
+    .solution-layout {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:clamp(1.5rem,4vw,4rem); align-items:center;
+      margin-top:clamp(0.6rem,1.5vh,1.2rem);
+    }
+    .solution-features {
+      display:flex; flex-direction:column;
+      gap:clamp(0.7rem,1.4vh,1.1rem);
+    }
+    .solution-feature {
+      display:flex; align-items:flex-start;
+      gap:clamp(0.6rem,1vw,0.9rem);
+    }
+    .feat-dot {
+      width:5px; height:5px; border-radius:50%;
+      background:var(--accent); flex-shrink:0; margin-top:0.5em;
+    }
+    .solution-feature p {
+      font-size:var(--body-size); color:var(--text-secondary); line-height:1.6;
+    }
+    .solution-feature p strong { color:var(--text-primary); font-weight:500; }
+    .solution-ref {
+      margin-top:clamp(0.8rem,1.8vh,1.4rem);
+      font-size:var(--small-size); color:var(--text-muted);
+      letter-spacing:0.03em; font-style:italic;
+    }
+
+    /* ============================================
+       SLIDE 4 — MODELO DE NEGOCIO
+       ============================================ */
+    .flow-steps {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:clamp(0.5rem,1vw,0.9rem);
+      margin-top:clamp(0.8rem,2vh,1.5rem);
+    }
+    .flow-step-inner {
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:8px; padding:clamp(0.9rem,1.8vw,1.4rem);
+      display:flex; flex-direction:column;
+      align-items:center; gap:clamp(0.3rem,0.7vh,0.6rem);
+      text-align:center; height:100%;
+    }
+    .flow-step:nth-child(2) .flow-step-inner {
+      border-color:rgba(240,159,15,0.3);
+      background:rgba(240,159,15,0.05);
+    }
+    .flow-num {
+      font-family:var(--font-display); font-weight:900;
+      font-size:clamp(1.3rem,2.8vw,2.4rem);
+      color:var(--accent); line-height:1; letter-spacing:-0.02em;
+    }
+    .flow-label {
+      font-family:var(--font-display); font-weight:700;
+      font-size:clamp(0.72rem,1.2vw,0.9rem);
+      color:var(--text-primary); line-height:1.2;
+    }
+    .flow-desc {
+      font-size:clamp(0.62rem,0.9vw,0.75rem);
+      color:var(--text-secondary); line-height:1.45;
+    }
+    .commission-note {
+      margin-top:clamp(0.7rem,1.5vh,1.2rem);
+      background:var(--accent-dim); border-radius:6px;
+      padding:clamp(0.6rem,1.2vw,0.9rem) clamp(0.8rem,1.5vw,1.2rem);
+    }
+    .commission-note p {
+      font-size:var(--body-size); color:var(--accent);
+      font-weight:500; text-align:center; line-height:1.4;
+    }
+
+    /* ============================================
+       SLIDE 5 — ¿CÓMO FUNCIONA?
+       ============================================ */
+    .how-steps {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:clamp(0.5rem,1vw,0.9rem);
+      margin-top:clamp(0.8rem,2vh,1.5rem);
+    }
+    .how-step {
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:8px; padding:clamp(0.9rem,1.8vw,1.4rem);
+      display:flex; flex-direction:column;
+      gap:clamp(0.35rem,0.8vh,0.6rem); position:relative;
+    }
+    .how-step-num {
+      font-family:var(--font-display); font-weight:900;
+      font-size:clamp(2rem,4vw,3.5rem); color:var(--accent);
+      line-height:1; opacity:0.2;
+      position:absolute; top:clamp(0.5rem,1vh,0.8rem);
+      right:clamp(0.5rem,1vw,0.8rem);
+    }
+    .how-step h3 {
+      font-family:var(--font-display); font-weight:800;
+      font-size:var(--h3-size); color:var(--text-primary);
+      letter-spacing:-0.01em; line-height:1.2; position:relative; z-index:1;
+    }
+    .how-step p {
+      font-size:clamp(0.68rem,1.05vw,0.82rem);
+      color:var(--text-secondary); line-height:1.5; position:relative; z-index:1;
+    }
+
+    /* ============================================
+       SLIDE 6 — CATEGORÍAS MVP
+       ============================================ */
+    .categories-grid {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:clamp(0.5rem,1vw,0.9rem);
+      margin-top:clamp(0.8rem,2vh,1.5rem);
+    }
+    .category-card {
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:8px; padding:clamp(1rem,2vw,1.5rem);
+      display:flex; flex-direction:column;
+      gap:clamp(0.5rem,0.9vh,0.7rem);
+      transition:border-color 0.3s ease, background 0.3s ease;
+    }
+    .category-card:hover {
+      border-color:rgba(240,159,15,0.32);
+      background:rgba(240,159,15,0.04);
+    }
+    .category-icon {
+      font-size:clamp(1.4rem,2.4vw,1.9rem); line-height:1;
+    }
+    .category-card h3 {
+      font-family:var(--font-display); font-weight:800;
+      font-size:var(--h3-size); color:var(--text-primary); letter-spacing:-0.01em;
+    }
+    .category-card p {
+      font-size:clamp(0.66rem,1vw,0.8rem);
+      color:var(--text-secondary); line-height:1.5;
+    }
+
+    /* ============================================
+       SLIDE 7 — STACK TECNOLÓGICO
+       ============================================ */
+    .stack-grid {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:clamp(0.5rem,1vw,0.9rem);
+      margin-top:clamp(0.8rem,2vh,1.5rem);
+    }
+    .stack-card {
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:8px; padding:clamp(1rem,1.8vw,1.4rem);
+      display:flex; flex-direction:column; gap:clamp(0.4rem,0.8vh,0.6rem);
+    }
+    .tech-name {
+      font-family:var(--font-display); font-weight:900;
+      font-size:clamp(0.95rem,1.8vw,1.35rem);
+      color:var(--accent); letter-spacing:-0.01em;
+    }
+    .tech-role {
+      font-family:var(--font-display); font-weight:700;
+      font-size:clamp(0.72rem,1.1vw,0.86rem); color:var(--text-primary);
+    }
+    .tech-desc {
+      font-size:clamp(0.63rem,0.9vw,0.76rem);
+      color:var(--text-secondary); line-height:1.5;
+    }
+    .stack-also {
+      margin-top:clamp(0.6rem,1.4vh,1rem);
+      font-size:var(--small-size); color:var(--text-muted); letter-spacing:0.04em;
+    }
+    .stack-also strong { color:var(--text-secondary); font-weight:500; }
+
+    /* ============================================
+       SLIDE 8 — ACTORES DEL SISTEMA
+       ============================================ */
+    .actors-grid {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:clamp(0.5rem,1vw,0.9rem);
+      margin-top:clamp(0.8rem,2vh,1.5rem);
+    }
+    .actor-card {
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:8px; padding:clamp(1rem,1.8vw,1.4rem);
+      display:flex; flex-direction:column; gap:clamp(0.35rem,0.7vh,0.55rem);
+    }
+    .actor-avatar {
+      width:clamp(30px,3.5vw,42px); height:clamp(30px,3.5vw,42px);
+      border-radius:50%; background:var(--accent-dim);
+      display:flex; align-items:center; justify-content:center;
+      font-size:clamp(0.85rem,1.4vw,1.1rem);
+    }
+    .actor-role-tag {
+      font-family:var(--font-display); font-weight:700;
+      font-size:var(--label-size); letter-spacing:0.1em;
+      text-transform:uppercase; color:var(--accent);
+    }
+    .actor-card h3 {
+      font-family:var(--font-display); font-weight:800;
+      font-size:var(--h3-size); color:var(--text-primary); letter-spacing:-0.01em;
+    }
+    .actor-card p {
+      font-size:clamp(0.63rem,0.95vw,0.78rem);
+      color:var(--text-secondary); line-height:1.5;
+    }
+    .actor-access {
+      display:inline-flex; padding:2px 8px; border-radius:4px;
+      font-size:clamp(0.52rem,0.78vw,0.64rem);
+      font-family:var(--font-display); font-weight:700;
+      letter-spacing:0.07em; text-transform:uppercase;
+      background:rgba(255,255,255,0.04); color:var(--text-muted);
+      width:fit-content; margin-top:clamp(0.1rem,0.3vh,0.25rem);
+    }
+
+    /* ============================================
+       SLIDE 9 — ROADMAP
+       ============================================ */
+    .roadmap-list {
+      display:flex; flex-direction:column;
+      gap:clamp(0.4rem,0.9vh,0.7rem);
+      margin-top:clamp(0.7rem,1.8vh,1.3rem);
+    }
+    .sprint-row {
+      display:grid;
+      grid-template-columns:clamp(55px,7.5vw,85px) 1fr;
+      gap:clamp(0.7rem,1.4vw,1.2rem); align-items:center;
+    }
+    .sprint-label {
+      font-family:var(--font-display); font-weight:900;
+      font-size:clamp(0.6rem,1vw,0.76rem);
+      color:var(--accent); letter-spacing:0.04em;
+      text-align:right; line-height:1.3;
+    }
+    .sprint-bar {
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:6px;
+      padding:clamp(0.55rem,1.1vw,0.85rem) clamp(0.7rem,1.3vw,1.1rem);
+      display:flex; align-items:center; justify-content:space-between;
+      gap:0.5rem;
+    }
+    .sprint-goal {
+      font-family:var(--font-display); font-weight:700;
+      font-size:clamp(0.72rem,1.15vw,0.88rem); color:var(--text-primary);
+    }
+    .sprint-tasks {
+      font-size:clamp(0.58rem,0.85vw,0.7rem);
+      color:var(--text-secondary); text-align:right; flex-shrink:0;
+    }
+
+    /* Left accent by sprint */
+    .sprint-row:nth-child(1) .sprint-bar { border-left:2px solid var(--accent); }
+    .sprint-row:nth-child(2) .sprint-bar { border-left:2px solid rgba(240,159,15,0.7); }
+    .sprint-row:nth-child(3) .sprint-bar { border-left:2px solid rgba(240,159,15,0.5); }
+    .sprint-row:nth-child(4) .sprint-bar { border-left:2px solid rgba(240,159,15,0.32); }
+    .sprint-row:nth-child(5) .sprint-bar { border-left:2px solid rgba(240,159,15,0.18); }
+
+    /* ============================================
+       SLIDE 10 — CIERRE
+       ============================================ */
+    .slide-closing {
+      justify-content:center; align-items:center; text-align:center;
+    }
+    .closing-inner {
+      display:flex; flex-direction:column; align-items:center;
+      gap:clamp(1rem,2.5vh,2rem); padding:var(--slide-padding);
+    }
+    .closing-logo-wrap {
+      display:flex; align-items:center;
+      gap:clamp(8px,1.2vw,14px);
+    }
+    .closing-svg { width:clamp(32px,5vw,60px); height:clamp(32px,5vw,60px); }
+    .closing-logo-name {
+      font-family:var(--font-display); font-weight:800;
+      font-size:clamp(1.5rem,3.5vw,3rem);
+      color:var(--text-primary); letter-spacing:-0.025em;
+    }
+    .closing-tagline {
+      font-family:var(--font-display); font-weight:900;
+      font-size:clamp(1.8rem,5vw,5rem); line-height:1;
+      letter-spacing:-0.03em; color:var(--text-primary);
+    }
+    .closing-sub {
+      font-family:var(--font-display); font-weight:400;
+      font-size:clamp(0.78rem,1.6vw,1.1rem);
+      color:var(--text-secondary); letter-spacing:0.18em; text-transform:uppercase;
+    }
+    .closing-repo {
+      font-size:var(--small-size); color:var(--text-muted);
+      letter-spacing:0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="progress-bar" id="progressBar"></div>
+  <nav class="nav-dots" id="navDots" aria-label="Navegación"></nav>
+  <div class="keyboard-hint">↑ ↓ para navegar</div>
+
+  <!-- ============================================
+       SLIDE 1 — COVER
+       ============================================ -->
+  <section class="slide slide-cover" id="slide-1">
+    <div class="cover-inner">
+
+      <div class="cover-logomark reveal d1">
+        <!-- Asterisk mark — 6 rays, color #F09F0F -->
+        <svg class="logo-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="logo-name">Eventia</span>
+      </div>
+
+      <h1 class="h-display reveal d2">
+        Marketplace<br>
+        de eventos<span class="accent">.</span>
+      </h1>
+
+      <p class="cover-tagline reveal d3">
+        Encuentra<span class="sep">·</span>Reserva<span class="sep">·</span>Celebra
+      </p>
+
+      <div class="cover-meta reveal d4">
+        <span class="cover-meta-item">Curso <strong>Análisis y Gestión de SI</strong></span>
+        <div class="cover-meta-sep"></div>
+        <span class="cover-meta-item">Metodología <strong>Scrum</strong></span>
+        <div class="cover-meta-sep"></div>
+        <span class="cover-meta-item"><strong>Mayo 2026</strong></span>
+      </div>
+    </div>
+    <div class="slide-num">01</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 2 — EL PROBLEMA
+       ============================================ -->
+  <section class="slide" id="slide-2">
+    <header class="slide-header">
+      <div class="eventia-mark reveal d1">
+        <svg class="mark-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="mark-text">Eventia</span>
+      </div>
+      <span class="section-label reveal d1">El Problema</span>
+    </header>
+
+    <div class="slide-content">
+      <div class="badge reveal d1">Problema identificado</div>
+
+      <h2 class="h2-display reveal d2" style="margin-top:clamp(0.4rem,1.2vh,1rem);">
+        Organizar un evento hoy<br>es un <span class="accent">caos.</span>
+      </h2>
+
+      <div class="problem-grid reveal d3">
+        <div class="problem-card">
+          <div class="problem-num">01</div>
+          <h3>Proceso Disperso</h3>
+          <p>La búsqueda ocurre vía WhatsApp, Facebook e Instagram, sin comparación estructurada.</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-num">02</div>
+          <h3>Sin Trazabilidad</h3>
+          <p>Los acuerdos son verbales o informales, sin respaldo contractual ni garantías.</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-num">03</div>
+          <h3>Mercado Cerrado</h3>
+          <p>Proveedores sin red social quedan excluidos, independientemente de su calidad.</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-num">04</div>
+          <h3>Precios Opacos</h3>
+          <p>Sin referencias claras de mercado, la negociación es desigual para ambas partes.</p>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">02</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 3 — LA SOLUCIÓN
+       ============================================ -->
+  <section class="slide" id="slide-3">
+    <header class="slide-header">
+      <div class="eventia-mark reveal d1">
+        <svg class="mark-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="mark-text">Eventia</span>
+      </div>
+      <span class="section-label reveal d1">La Solución</span>
+    </header>
+
+    <div class="slide-content">
+      <div class="solution-layout">
+        <div>
+          <div class="badge reveal d1">Propuesta de valor</div>
+          <h2 class="h2-display reveal d2" style="margin-top:clamp(0.5rem,1.2vh,1rem);">
+            Un solo lugar<br>para <span class="accent">todo.</span>
+          </h2>
+          <p class="lead reveal d3" style="margin-top:clamp(0.6rem,1.4vh,1.1rem);">
+            Eventia centraliza locales, fotografía, música y decoración bajo una experiencia unificada de contratación con contratos digitales y pagos integrados.
+          </p>
+          <p class="solution-ref reveal d4">
+            Modelo de referencia: Despegar.com aplicado al sector de eventos.
+          </p>
+        </div>
+
+        <div class="solution-features">
+          <div class="solution-feature reveal d2">
+            <div class="feat-dot"></div>
+            <p><strong>Busca y compara</strong> servicios por categoría, ciudad, fecha y presupuesto.</p>
+          </div>
+          <div class="solution-feature reveal d3">
+            <div class="feat-dot"></div>
+            <p><strong>Contratos digitales</strong> que garantizan el acuerdo entre cliente y proveedor.</p>
+          </div>
+          <div class="solution-feature reveal d4">
+            <div class="feat-dot"></div>
+            <p><strong>Pagos integrados</strong> con retención automática de comisión vía Stripe.</p>
+          </div>
+          <div class="solution-feature reveal d5">
+            <div class="feat-dot"></div>
+            <p><strong>Marketplace abierto</strong> que incluye proveedores sin red establecida.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">03</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 4 — MODELO DE NEGOCIO
+       ============================================ -->
+  <section class="slide" id="slide-4">
+    <header class="slide-header">
+      <div class="eventia-mark reveal d1">
+        <svg class="mark-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="mark-text">Eventia</span>
+      </div>
+      <span class="section-label reveal d1">Modelo de Negocio</span>
+    </header>
+
+    <div class="slide-content">
+      <div class="badge reveal d1">Ingresos por comisión</div>
+
+      <h2 class="h2-display reveal d2" style="margin-top:clamp(0.4rem,1.2vh,1rem);">
+        Alineados con el éxito<br>de cada <span class="accent">proveedor.</span>
+      </h2>
+
+      <div class="flow-steps reveal d3">
+        <div class="flow-step">
+          <div class="flow-step-inner">
+            <div class="flow-num">100%</div>
+            <div class="flow-label">Cliente paga online</div>
+            <div class="flow-desc">Pago completo al confirmar el contrato digital</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-inner">
+            <div class="flow-num">X%</div>
+            <div class="flow-label">Eventia retiene</div>
+            <div class="flow-desc">Comisión configurable por categoría de servicio</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-inner">
+            <div class="flow-num" style="font-size:clamp(1.2rem,2.5vw,2rem); opacity:0.55;">✦</div>
+            <div class="flow-label">El evento ocurre</div>
+            <div class="flow-desc">El servicio se completa satisfactoriamente</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-inner">
+            <div class="flow-num" style="font-size:clamp(1rem,2vw,1.8rem);">(100–X)%</div>
+            <div class="flow-label">Proveedor cobra</div>
+            <div class="flow-desc">Pago automático a cuenta vía Stripe Connect</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="commission-note reveal d4">
+        <p>El porcentaje de comisión es configurable por categoría — el administrador lo gestiona desde el panel.</p>
+      </div>
+    </div>
+    <div class="slide-num">04</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 5 — ¿CÓMO FUNCIONA?
+       ============================================ -->
+  <section class="slide" id="slide-5">
+    <header class="slide-header">
+      <div class="eventia-mark reveal d1">
+        <svg class="mark-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="mark-text">Eventia</span>
+      </div>
+      <span class="section-label reveal d1">Flujo de usuario</span>
+    </header>
+
+    <div class="slide-content">
+      <div class="badge reveal d1">¿Cómo funciona?</div>
+
+      <h2 class="h2-display reveal d2" style="margin-top:clamp(0.4rem,1.2vh,1rem);">
+        De la búsqueda al<br><span class="accent">contrato.</span>
+      </h2>
+
+      <div class="how-steps reveal d3">
+        <div class="how-step">
+          <div class="how-step-num">1</div>
+          <h3>Explora el catálogo</h3>
+          <p>Busca por categoría, ciudad, fecha y presupuesto. Sin registro previo.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">2</div>
+          <h3>Compara y elige</h3>
+          <p>Ve fotos, precios, reseñas y disponibilidad de cada proveedor.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">3</div>
+          <h3>Firma el contrato</h3>
+          <p>Contrato digital generado automáticamente. Firma bilateral electrónica.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">4</div>
+          <h3>Paga y celebra</h3>
+          <p>Pago 100% online. El proveedor cobra automáticamente tras el evento.</p>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">05</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 6 — CATEGORÍAS MVP
+       ============================================ -->
+  <section class="slide" id="slide-6">
+    <header class="slide-header">
+      <div class="eventia-mark reveal d1">
+        <svg class="mark-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="mark-text">Eventia</span>
+      </div>
+      <span class="section-label reveal d1">Alcance MVP</span>
+    </header>
+
+    <div class="slide-content">
+      <div class="badge reveal d1">Categorías del MVP</div>
+
+      <h2 class="h2-display reveal d2" style="margin-top:clamp(0.4rem,1.2vh,1rem);">
+        Cuatro verticales,<br>una <span class="accent">plataforma.</span>
+      </h2>
+
+      <div class="categories-grid reveal d3">
+        <div class="category-card">
+          <div class="category-icon">🏛️</div>
+          <h3>Locales</h3>
+          <p>Salones, haciendas y espacios únicos para cualquier celebración.</p>
+        </div>
+        <div class="category-card">
+          <div class="category-icon">📷</div>
+          <h3>Fotografía</h3>
+          <p>Fotógrafos y videógrafos profesionales para capturar cada momento.</p>
+        </div>
+        <div class="category-card">
+          <div class="category-icon">🎵</div>
+          <h3>Música</h3>
+          <p>DJs, bandas y orquestas para animar cualquier tipo de evento.</p>
+        </div>
+        <div class="category-card">
+          <div class="category-icon">🌸</div>
+          <h3>Decoración</h3>
+          <p>Decoradores, flores e iluminación para transformar cada espacio.</p>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">06</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 7 — STACK TECNOLÓGICO
+       ============================================ -->
+  <section class="slide" id="slide-7">
+    <header class="slide-header">
+      <div class="eventia-mark reveal d1">
+        <svg class="mark-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="mark-text">Eventia</span>
+      </div>
+      <span class="section-label reveal d1">Arquitectura</span>
+    </header>
+
+    <div class="slide-content">
+      <div class="badge reveal d1">Stack Tecnológico</div>
+
+      <h2 class="h2-display reveal d2" style="margin-top:clamp(0.4rem,1.2vh,1rem);">
+        Monolito modular.<br>Listo para <span class="accent">escalar.</span>
+      </h2>
+
+      <div class="stack-grid reveal d3">
+        <div class="stack-card">
+          <div class="tech-name">Next.js 15</div>
+          <div class="tech-role">Framework Full-Stack</div>
+          <div class="tech-desc">SSR para SEO del catálogo. Server Actions para lógica de negocio.</div>
+        </div>
+        <div class="stack-card">
+          <div class="tech-name">Supabase</div>
+          <div class="tech-role">Base de Datos &amp; Auth</div>
+          <div class="tech-desc">PostgreSQL, Auth, Storage y Row Level Security incluidos.</div>
+        </div>
+        <div class="stack-card">
+          <div class="tech-name">Stripe</div>
+          <div class="tech-role">Pagos &amp; Comisiones</div>
+          <div class="tech-desc">Split payments nativos para marketplaces vía Stripe Connect.</div>
+        </div>
+        <div class="stack-card">
+          <div class="tech-name">Vercel</div>
+          <div class="tech-role">Hosting &amp; CI/CD</div>
+          <div class="tech-desc">Deploy automático desde GitHub, preview por rama y CDN global.</div>
+        </div>
+      </div>
+
+      <p class="stack-also reveal d4">
+        También: <strong>Tailwind CSS + shadcn/ui</strong> · <strong>Prisma ORM</strong> · <strong>Resend</strong> (emails transaccionales)
+      </p>
+    </div>
+    <div class="slide-num">07</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 8 — ACTORES DEL SISTEMA
+       ============================================ -->
+  <section class="slide" id="slide-8">
+    <header class="slide-header">
+      <div class="eventia-mark reveal d1">
+        <svg class="mark-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="mark-text">Eventia</span>
+      </div>
+      <span class="section-label reveal d1">Actores del sistema</span>
+    </header>
+
+    <div class="slide-content">
+      <div class="badge reveal d1">¿Quiénes usan Eventia?</div>
+
+      <h2 class="h2-display reveal d2" style="margin-top:clamp(0.4rem,1.2vh,1rem);">
+        Cuatro roles,<br>un <span class="accent">ecosistema.</span>
+      </h2>
+
+      <div class="actors-grid reveal d3">
+        <div class="actor-card">
+          <div class="actor-avatar">👤</div>
+          <div class="actor-role-tag">Visitante</div>
+          <h3>Explorador</h3>
+          <p>Navega el catálogo libremente sin necesidad de registro.</p>
+          <div class="actor-access">Solo lectura</div>
+        </div>
+        <div class="actor-card">
+          <div class="actor-avatar">🎪</div>
+          <div class="actor-role-tag">Cliente</div>
+          <h3>Organizador</h3>
+          <p>Busca, reserva, contrata y paga servicios para su evento.</p>
+          <div class="actor-access">Registro requerido</div>
+        </div>
+        <div class="actor-card">
+          <div class="actor-avatar">🏢</div>
+          <div class="actor-role-tag">Proveedor</div>
+          <h3>Prestador</h3>
+          <p>Publica servicios, gestiona reservas y recibe pagos automáticos.</p>
+          <div class="actor-access">Aprobación requerida</div>
+        </div>
+        <div class="actor-card">
+          <div class="actor-avatar">⚙️</div>
+          <div class="actor-role-tag">Administrador</div>
+          <h3>Operador</h3>
+          <p>Gestiona la plataforma, aprueba proveedores y supervisa transacciones.</p>
+          <div class="actor-access">Acceso total</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">08</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 9 — ROADMAP
+       ============================================ -->
+  <section class="slide" id="slide-9">
+    <header class="slide-header">
+      <div class="eventia-mark reveal d1">
+        <svg class="mark-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="mark-text">Eventia</span>
+      </div>
+      <span class="section-label reveal d1">Roadmap</span>
+    </header>
+
+    <div class="slide-content">
+      <div class="badge reveal d1">5 sprints · 10 semanas</div>
+
+      <h2 class="h2-display reveal d2" style="margin-top:clamp(0.4rem,1.2vh,1rem);">
+        Del diseño al<br><span class="accent">despliegue.</span>
+      </h2>
+
+      <div class="roadmap-list reveal d3">
+        <div class="sprint-row">
+          <div class="sprint-label">Sprint 1<br>Sem 1–2</div>
+          <div class="sprint-bar">
+            <span class="sprint-goal">Base del sistema y gestión de usuarios</span>
+            <span class="sprint-tasks">Auth · Perfiles · Admin · Aprobación</span>
+          </div>
+        </div>
+        <div class="sprint-row">
+          <div class="sprint-label">Sprint 2<br>Sem 3–4</div>
+          <div class="sprint-bar">
+            <span class="sprint-goal">Catálogo de servicios</span>
+            <span class="sprint-tasks">Publicaciones · Búsqueda · Filtros</span>
+          </div>
+        </div>
+        <div class="sprint-row">
+          <div class="sprint-label">Sprint 3<br>Sem 5–6</div>
+          <div class="sprint-bar">
+            <span class="sprint-goal">Reservas y contratos digitales</span>
+            <span class="sprint-tasks">Reserva · Cotización · Firma digital</span>
+          </div>
+        </div>
+        <div class="sprint-row">
+          <div class="sprint-label">Sprint 4<br>Sem 7–8</div>
+          <div class="sprint-bar">
+            <span class="sprint-goal">Pagos y comisiones</span>
+            <span class="sprint-tasks">Stripe Connect · Retención automática</span>
+          </div>
+        </div>
+        <div class="sprint-row">
+          <div class="sprint-label">Sprint 5<br>Sem 9–10</div>
+          <div class="sprint-bar">
+            <span class="sprint-goal">Reseñas, notificaciones y despliegue</span>
+            <span class="sprint-tasks">Reviews · Emails · Producción Vercel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">09</div>
+  </section>
+
+  <!-- ============================================
+       SLIDE 10 — CIERRE
+       ============================================ -->
+  <section class="slide slide-closing" id="slide-10">
+    <div class="closing-inner">
+
+      <div class="closing-logo-wrap reveal d1">
+        <svg class="closing-svg" viewBox="0 0 48 48" fill="none">
+          <line x1="24" y1="7"  x2="24" y2="20" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="24" y1="28" x2="24" y2="41" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="14.5" x2="21" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="27" y1="27.5" x2="38" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="38" y1="14.5" x2="27" y2="20.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+          <line x1="21" y1="27.5" x2="10" y2="33.5" stroke="#F09F0F" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="closing-logo-name">Eventia</span>
+      </div>
+
+      <div class="closing-tagline reveal d2">
+        Encuentra<span class="accent">.</span><br>
+        Reserva<span class="accent">.</span><br>
+        Celebra<span class="accent">.</span>
+      </div>
+
+      <p class="closing-sub reveal d3">La plataforma de eventos del Perú</p>
+
+      <p class="closing-repo reveal d4">
+        github.com/GiancarloChavez/Eventia &nbsp;·&nbsp; Mayo 2026
+      </p>
+    </div>
+    <div class="slide-num">10</div>
+  </section>
+
+  <script>
+    /* ============================================
+       SLIDE PRESENTATION CONTROLLER
+       Keyboard · Touch · Wheel · Progress · Dots
+       ============================================ */
+    class SlidePresentation {
+      constructor() {
+        this.slides    = Array.from(document.querySelectorAll('.slide'));
+        this.total     = this.slides.length;
+        this.current   = 0;
+        this.bar       = document.getElementById('progressBar');
+        this.dotsWrap  = document.getElementById('navDots');
+
+        this.buildDots();
+        this.observe();
+        this.keyboard();
+        this.touch();
+        this.wheel();
+        this.updateBar(0);
+      }
+
+      buildDots() {
+        this.dotsWrap.innerHTML = '';
+        this.slides.forEach((_, i) => {
+          const b = document.createElement('button');
+          b.className = 'nav-dot' + (i === 0 ? ' active' : '');
+          b.setAttribute('aria-label', `Slide ${i + 1}`);
+          b.addEventListener('click', () => this.go(i));
+          this.dotsWrap.appendChild(b);
+        });
+      }
+
+      observe() {
+        const io = new IntersectionObserver(entries => {
+          entries.forEach(e => {
+            if (e.isIntersecting) {
+              e.target.classList.add('visible');
+              const i = this.slides.indexOf(e.target);
+              if (i !== -1) {
+                this.current = i;
+                this.updateBar(i);
+                this.updateDots(i);
+              }
+            }
+          });
+        }, { threshold: 0.5 });
+
+        this.slides.forEach(s => io.observe(s));
+      }
+
+      keyboard() {
+        document.addEventListener('keydown', e => {
+          const fwd = ['ArrowDown','ArrowRight',' ','PageDown'];
+          const bck = ['ArrowUp','ArrowLeft','PageUp'];
+          if (fwd.includes(e.key)) { e.preventDefault(); this.go(this.current + 1); }
+          if (bck.includes(e.key)) { e.preventDefault(); this.go(this.current - 1); }
+          if (e.key === 'Home')    { e.preventDefault(); this.go(0); }
+          if (e.key === 'End')     { e.preventDefault(); this.go(this.total - 1); }
+        });
+      }
+
+      touch() {
+        let sy = 0, sx = 0;
+        document.addEventListener('touchstart', e => {
+          sy = e.touches[0].clientY;
+          sx = e.touches[0].clientX;
+        }, { passive: true });
+        document.addEventListener('touchend', e => {
+          const dy = sy - e.changedTouches[0].clientY;
+          const dx = sx - e.changedTouches[0].clientX;
+          if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 45) {
+            dy > 0 ? this.go(this.current + 1) : this.go(this.current - 1);
+          }
+        }, { passive: true });
+      }
+
+      wheel() {
+        let last = 0;
+        document.addEventListener('wheel', e => {
+          const now = Date.now();
+          if (now - last < 750) return;
+          last = now;
+          e.deltaY > 0 ? this.go(this.current + 1) : this.go(this.current - 1);
+        }, { passive: true });
+      }
+
+      go(i) {
+        const t = Math.max(0, Math.min(i, this.total - 1));
+        this.slides[t].scrollIntoView({ behavior: 'smooth' });
+      }
+
+      updateBar(i) {
+        const pct = this.total > 1 ? (i / (this.total - 1)) * 100 : 100;
+        this.bar.style.width = pct + '%';
+      }
+
+      updateDots(i) {
+        this.dotsWrap.querySelectorAll('.nav-dot').forEach((d, j) =>
+          d.classList.toggle('active', j === i));
+      }
+    }
+
+    new SlidePresentation();
+  </script>
+</body>
+</html>

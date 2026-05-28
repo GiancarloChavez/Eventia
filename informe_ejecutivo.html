@@ -148,16 +148,11 @@
   /* ── HEADER DE PÁGINA ── */
   .page-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding-bottom: 12px;
     margin-bottom: 32px;
     border-bottom: 2px solid var(--primary-light);
-  }
-
-  .page-header-logo {
-    height: 28px;
-    width: auto;
   }
 
   .page-header-label {
@@ -509,11 +504,49 @@
   .ui-placeholder-title { font-weight: 700; color: var(--gray-800); font-size: 10.5pt; }
   .ui-placeholder-desc  { font-size: 8.5pt; color: var(--gray-400); margin-top: 4px; }
 
+  /* ── TEAM PORTADA ── */
+  .cover-team {
+    margin-top: 24px;
+    text-align: center;
+    padding: 0 20px;
+  }
+
+  .cover-team-role {
+    font-size: 8pt;
+    color: rgba(255,255,255,0.4);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+
+  .cover-team-name {
+    font-size: 10.5pt;
+    color: rgba(255,255,255,0.85);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+
+  .cover-team-authors {
+    font-size: 9pt;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.9;
+  }
+
   /* ── PRINT ── */
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .page { page-break-after: always; }
+    .page {
+      page-break-after: always;
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
     .cover { page-break-after: always; min-height: 100vh; }
+  }
+
+  .page {
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
   @page { size: A4; margin: 0; }
@@ -541,6 +574,16 @@
     <p><strong>Repositorio:</strong> github.com/GiancarloChavez/Eventia</p>
     <p><strong>Fecha:</strong> Mayo 2026</p>
   </div>
+
+  <div class="cover-team">
+    <div class="cover-team-role">Docente</div>
+    <div class="cover-team-name">Ing. Carlos Gonzáles Aspajo</div>
+    <div class="cover-team-role">Autores</div>
+    <div class="cover-team-authors">
+      Giancarlo André Chávez Pezo &nbsp;·&nbsp; Angel Alonso Santiago Manrique Vargas &nbsp;·&nbsp; Adamo Manuel Carhuajulca Flores<br>
+      Elkin Piero Torres Souza &nbsp;·&nbsp; Fernando Enrique García Torres &nbsp;·&nbsp; Gina Díaz Barrera &nbsp;·&nbsp; José Flores Ríos
+    </div>
+  </div>
 </div>
 
 
@@ -549,8 +592,7 @@
 ════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <div class="section-header">
@@ -602,8 +644,7 @@
 ════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <div class="section-header">
@@ -669,8 +710,7 @@
 ════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <div class="section-header">
@@ -785,8 +825,7 @@
 ════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <div class="section-header">
@@ -834,8 +873,7 @@
 
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <h3>Módulo 4 — Pagos y Comisiones</h3>
@@ -889,8 +927,7 @@
 ════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <div class="section-header">
@@ -977,8 +1014,7 @@
 ════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <div class="section-header">
@@ -1129,8 +1165,7 @@
 ════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <div class="section-header">
@@ -1157,8 +1192,7 @@
 
 <div class="page">
   <div class="page-header">
-    <img class="page-header-logo" src="EventiaLogoW.png" alt="Eventia" style="filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg); height:28px;">
-    <div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
+<div class="page-header-label">Informe Ejecutivo · Avance de Proyecto</div>
   </div>
 
   <h3>Pantalla 3 — Detalle de Servicio</h3>
