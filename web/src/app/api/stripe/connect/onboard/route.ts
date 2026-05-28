@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 
 export async function POST() {
   const cookieStore = await cookies();
@@ -34,7 +34,7 @@ export async function POST() {
   let accountId = provider.stripe_account_id as string | null;
 
   if (!accountId) {
-    const account = await stripe.accounts.create({
+    const account = await getStripe().accounts.create({
       type: "express",
       country: "PE",
       email: session.user.email,
@@ -47,7 +47,7 @@ export async function POST() {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
-  const accountLink = await stripe.accountLinks.create({
+  const accountLink = await getStripe().accountLinks.create({
     account: accountId,
     refresh_url: `${appUrl}/proveedor/onboarding/pagos`,
     return_url: `${appUrl}/api/stripe/connect/callback`,

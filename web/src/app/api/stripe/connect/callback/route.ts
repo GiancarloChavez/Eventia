@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 
 export async function GET(request: NextRequest) {
   const { origin } = new URL(request.url);
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/proveedor/onboarding/pagos`);
   }
 
-  const account = await stripe.accounts.retrieve(provider.stripe_account_id);
+  const account = await getStripe().accounts.retrieve(provider.stripe_account_id);
   const complete = account.charges_enabled ?? false;
 
   await supabase
