@@ -1,52 +1,39 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { getSupabase } from "@/lib/supabase";
 
 function LoginCallbackContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const ran = useRef(false);
 
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
 
-    const handle = async () => {
-      const supabase = getSupabase();
-      const code = searchParams.get("code");
+    const hasCode = new URLSearchParams(window.location.search).has("code");
+    if (!hasCode) {
+      router.replace("/auth/login");
+      return;
+    }
 
-      let user = null;
+    const supabase = getSupabase();
+    let subRef: { unsubscribe: () => void } | null = null;
 
-      if (code) {
-        try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!error && data.user) {
-            user = data.user;
-          } else if (error) {
-            console.error("[login callback] exchange error:", error.message);
-          }
-        } catch (e) {
-          console.error("[login callback] exchange threw:", e);
-        }
-      }
+    const timer = setTimeout(() => {
+      subRef?.unsubscribe();
+      router.replace("/auth/login?error=oauth_error");
+    }, 15000);
 
-      if (!user) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          user = session?.user ?? null;
-        } catch (e) {
-          console.error("[login callback] getSession threw:", e);
-        }
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== "SIGNED_IN" || !session?.user) return;
 
-      if (!user) {
-        router.replace("/auth/login?error=oauth_error");
-        return;
-      }
+      clearTimeout(timer);
+      subscription.unsubscribe();
 
+      const user = session.user;
       const secondsSinceCreation =
         (Date.now() - new Date(user.created_at).getTime()) / 1000;
 
@@ -64,10 +51,14 @@ function LoginCallbackContent() {
 
       const dest = profile?.role === "provider" ? "/proveedor" : "/cliente";
       router.replace(dest);
-    };
+    });
+    subRef = subscription;
 
-    handle();
-  }, [router, searchParams]);
+    return () => {
+      clearTimeout(timer);
+      subRef?.unsubscribe();
+    };
+  }, [router]);
 
   return (
     <div className="flex items-center justify-center py-24">

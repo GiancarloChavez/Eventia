@@ -1,65 +1,55 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { getSupabase } from "@/lib/supabase";
 
 function ProviderCallbackContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const ran = useRef(false);
 
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
 
-    const handle = async () => {
-      const supabase = getSupabase();
-      const code = searchParams.get("code");
+    const hasCode = new URLSearchParams(window.location.search).has("code");
+    if (!hasCode) {
+      router.replace("/auth");
+      return;
+    }
 
-      let user = null;
+    const supabase = getSupabase();
+    let subRef: { unsubscribe: () => void } | null = null;
 
-      if (code) {
-        try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!error && data.user) {
-            user = data.user;
-          } else if (error) {
-            console.error("[provider callback] exchange error:", error.message);
-          }
-        } catch (e) {
-          console.error("[provider callback] exchange threw:", e);
-        }
-      }
+    const timer = setTimeout(() => {
+      subRef?.unsubscribe();
+      router.replace("/auth?error=auth_callback_error");
+    }, 15000);
 
-      if (!user) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          user = session?.user ?? null;
-        } catch (e) {
-          console.error("[provider callback] getSession threw:", e);
-        }
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== "SIGNED_IN" || !session?.user) return;
 
-      if (!user) {
-        router.replace("/auth?error=auth_callback_error");
-        return;
-      }
+      clearTimeout(timer);
+      subscription.unsubscribe();
 
       try {
         await supabase.auth.updateUser({ data: { role: "provider" } });
-        await supabase.from("profiles").update({ role: "provider" }).eq("id", user.id);
+        await supabase.from("profiles").update({ role: "provider" }).eq("id", session.user.id);
         await fetch("/api/auth/provider-setup", { method: "POST" });
       } catch (e) {
         console.error("[provider callback] setup error:", e);
       }
 
       router.replace("/proveedor");
-    };
+    });
+    subRef = subscription;
 
-    handle();
-  }, [router, searchParams]);
+    return () => {
+      clearTimeout(timer);
+      subRef?.unsubscribe();
+    };
+  }, [router]);
 
   return (
     <div className="flex items-center justify-center py-24">
