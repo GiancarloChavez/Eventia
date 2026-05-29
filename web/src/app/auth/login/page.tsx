@@ -33,18 +33,9 @@ function LoginContent() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error,         setError]         = useState<string | null>(null);
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
     setGoogleLoading(true);
-    const { error: oauthError } = await getSupabase().auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback/login`,
-      },
-    });
-    if (oauthError) {
-      setError(oauthError.message);
-      setGoogleLoading(false);
-    }
+    window.location.href = "/api/auth/oauth?flow=login";
   };
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -195,18 +195,9 @@ function RegistroForm() {
 
   // ── Google OAuth ──────────────────────────────────────────
 
-  const handleGoogleOAuth = async () => {
+  const handleGoogleOAuth = () => {
     setOauthLoading(true);
-    const { error: oauthError } = await getSupabase().auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback/provider`,
-      },
-    });
-    if (oauthError) {
-      setError(oauthError.message);
-      setOauthLoading(false);
-    }
+    window.location.href = "/api/auth/oauth?flow=provider";
   };
 
   // ── Email / password submit ───────────────────────────────
