@@ -8,7 +8,6 @@ import {
   ChevronLeft, Check,
 } from "lucide-react";
 import { PERUVIAN_CITIES } from "@/lib/data";
-import { getSupabase } from "@/lib/supabase";
 
 // ── Wizard ─────────────────────────────────────────────────
 
@@ -215,30 +214,22 @@ function RegistroForm() {
     setError(null);
     setLoading(true);
 
-    const redirectTo = isProvider
-      ? `${window.location.origin}/auth/callback/provider`
-      : undefined;
-
-    const { error: signUpError } = await getSupabase().auth.signUp({
-      email:    form.email,
-      password: form.password,
-      options: {
-        ...(redirectTo && { emailRedirectTo: redirectTo }),
-        data: {
-          full_name: form.nombre,
-          role: isProvider ? "provider" : "client",
-          ...(!isProvider && {
-            phone: form.telefono || null,
-            city:  form.ciudad  || null,
-          }),
-        },
-      },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email:      form.email,
+        password:   form.password,
+        full_name:  form.nombre,
+        role:       isProvider ? "provider" : "client",
+      }),
     });
 
     setLoading(false);
 
-    if (signUpError) {
-      setError(signUpError.message);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Error al crear la cuenta.");
       return;
     }
 
@@ -252,12 +243,14 @@ function RegistroForm() {
   // ── Resend verification ───────────────────────────────────
 
   const handleResend = async () => {
-    await getSupabase().auth.resend({
-      type:  "signup",
-      email: form.email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback/provider`,
-      },
+    await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email:  form.email,
+        role:   "provider",
+        resend: true,
+      }),
     });
   };
 
