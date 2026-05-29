@@ -21,15 +21,25 @@ function LoginCallbackContent() {
       let user = null;
 
       if (code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error && data.user) {
-          user = data.user;
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error && data.user) {
+            user = data.user;
+          } else if (error) {
+            console.error("[login callback] exchange error:", error.message);
+          }
+        } catch (e) {
+          console.error("[login callback] exchange threw:", e);
         }
       }
 
       if (!user) {
-        const { data: { session } } = await supabase.auth.getSession();
-        user = session?.user ?? null;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          user = session?.user ?? null;
+        } catch (e) {
+          console.error("[login callback] getSession threw:", e);
+        }
       }
 
       if (!user) {

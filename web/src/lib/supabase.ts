@@ -8,6 +8,13 @@ export function getSupabase(): SupabaseClient {
     _client = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        auth: {
+          // Disable auto-exchange so our callback pages control when
+          // exchangeCodeForSession is called — avoids double-exchange race.
+          detectSessionInUrl: false,
+        },
+      }
     );
   }
   return _client;
