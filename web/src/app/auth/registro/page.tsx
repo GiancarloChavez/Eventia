@@ -107,7 +107,6 @@ function RegistroForm() {
   const [substep,      setSubstep]      = useState<Substep>("email");
   const [email,        setEmail]        = useState("");
   const [otp,          setOtp]          = useState("");
-  const [otpId,        setOtpId]        = useState("");
   const [showPwd,      setShowPwd]      = useState(false);
   const [loading,      setLoading]      = useState(false);
   const [resending,    setResending]    = useState(false);
@@ -178,8 +177,6 @@ function RegistroForm() {
       return;
     }
 
-    const { otp_id } = await res.json();
-    setOtpId(otp_id);
     setSubstep("profile");
   };
 
@@ -218,7 +215,6 @@ function RegistroForm() {
         full_name: form.nombre,
         password:  form.password,
         role:      isProvider ? "provider" : "client",
-        otp_id:    otpId,
         phone:     form.telefono || null,
       }),
     });

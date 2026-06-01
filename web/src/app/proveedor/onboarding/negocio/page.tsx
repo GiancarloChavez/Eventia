@@ -115,7 +115,7 @@ export default function NegocioPage() {
           description:  provider.description   ?? "",
           categoryId:   provider.category_id   ?? 0,
           city:         provider.city           ?? "",
-          phone:        provider.phone          ?? "",
+          phone:        (provider.phone ?? "").replace(/^\+51\s?/, ""),
         });
       }
 
@@ -140,7 +140,7 @@ export default function NegocioPage() {
         description:    form.description || null,
         category_id:    form.categoryId,
         city:           form.city,
-        phone:          form.phone || null,
+        phone:          form.phone ? `+51${form.phone}` : null,
         onboarding_step: 2,
       })
       .eq("user_id", userId);
@@ -321,20 +321,23 @@ export default function NegocioPage() {
           <label className="text-gray-700 text-[13px] font-semibold block mb-1.5">
             Teléfono de contacto
           </label>
-          <div className="relative">
-            <Phone
-              size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-            />
+          <div className="flex rounded-xl border border-gray-200 overflow-hidden transition-colors focus-within:border-[#f39e10]">
+            <div className="flex items-center gap-1.5 px-3.5 bg-gray-50 border-r border-gray-200 shrink-0">
+              <Phone size={13} className="text-gray-400" />
+              <span className="text-[14px] text-gray-600 font-medium">+51</span>
+            </div>
             <input
-              type="tel"
+              type="text"
+              inputMode="numeric"
+              maxLength={9}
               value={form.phone}
-              onChange={set("phone")}
-              placeholder="+51 999 999 999"
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-[14px] outline-none transition-colors"
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                setForm((f) => ({ ...f, phone: digits }));
+              }}
+              placeholder="999 999 999"
+              className="flex-1 px-3.5 py-3 text-[14px] outline-none bg-white"
               style={{ fontFamily: "inherit" }}
-              onFocus={(e) => (e.target.style.borderColor = "#f39e10")}
-              onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
             />
           </div>
         </div>

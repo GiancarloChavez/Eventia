@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-import { createHash } from "crypto";
+import { createSupabaseServer } from "@/lib/supabase-server";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -10,31 +10,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Datos inválidos." }, { status: 400 });
   }
 
-  const adminSupabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const cookieStore = await cookies();
+  const supabase = createSupabaseServer(cookieStore);
 
-  const codeHash = createHash("sha256").update(code + "|" + email).digest("hex");
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token: code,
+    type: "email",
+  });
 
-  const { data: record } = await adminSupabase
-    .from("email_otps")
-    .select("id")
-    .eq("email", email)
-    .eq("code_hash", codeHash)
-    .eq("used", false)
-    .eq("verified", false)
-    .gt("expires_at", new Date().toISOString())
-    .single();
-
-  if (!record) {
+  if (error) {
+    console.error("[verify-otp] error:", error.message);
     return NextResponse.json({ error: "Código incorrecto o expirado." }, { status: 400 });
   }
 
-  await adminSupabase
-    .from("email_otps")
-    .update({ verified: true })
-    .eq("id", record.id);
-
-  return NextResponse.json({ ok: true, otp_id: record.id });
+  return NextResponse.json({ ok: true });
 }
