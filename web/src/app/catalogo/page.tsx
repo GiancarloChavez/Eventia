@@ -3,8 +3,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, ChevronLeft, ChevronRight, MapPin, Calendar, Users, Camera, Music, Sparkles, Building2, Tag, SlidersHorizontal, X } from "lucide-react";
-import { PERUVIAN_CITIES, SERVICE_SELECT, type Category, type DbService } from "@/lib/data";
+import { Search, ChevronLeft, ChevronRight, Calendar, Users, Camera, Music, Sparkles, Building2, Tag, SlidersHorizontal, X } from "lucide-react";
+import { SERVICE_SELECT, type Category, type DbService } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
 import { ServiceCard } from "@/components/shared/service-card";
 
@@ -82,7 +82,6 @@ export default function CatalogPage() {
   const router = useRouter();
 
   const [category, setCategory] = useState<Category | "">((searchParams.get("category") as Category) ?? "");
-  const [city, setCity] = useState(searchParams.get("city") ?? "");
   const [date, setDate] = useState(searchParams.get("date") ?? "");
   const [field3, setField3] = useState("");
   const [maxPrice, setMaxPrice] = useState(20000);
@@ -101,7 +100,7 @@ export default function CatalogPage() {
     setPage(1);
   }, [searchParams]);
 
-  useEffect(() => { setPage(1); }, [category, maxPrice, minRating, sortBy, city]);
+  useEffect(() => { setPage(1); }, [category, maxPrice, minRating, sortBy]);
 
   useEffect(() => {
     async function fetchServices() {
@@ -121,14 +120,12 @@ export default function CatalogPage() {
         if (cat) query = query.eq("category_id", cat.id);
       }
 
-      if (city) query = query.eq("location", city) as typeof query;
-
       const { data } = await query;
       setServices((data as unknown as DbService[]) ?? []);
       setLoading(false);
     }
     fetchServices();
-  }, [category, city]);
+  }, [category]);
 
   const heroKey = (category as CatKey) || "todos";
   const hero = HERO_CONFIG[heroKey];
@@ -157,7 +154,6 @@ export default function CatalogPage() {
   function handleSearch() {
     const params = new URLSearchParams();
     if (category) params.set("category", category);
-    if (city) params.set("city", city);
     if (date) params.set("date", date);
     router.push(`/catalogo?${params.toString()}`, { scroll: false });
     document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -231,20 +227,10 @@ export default function CatalogPage() {
               boxShadow: "0 16px 64px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.12)",
             }}
           >
-            {/* Ciudad */}
+            {/* Ciudad fija */}
             <div className="flex flex-col gap-1 px-4 py-3 flex-1">
-              <span className="text-gray-400 text-[11px] font-bold uppercase tracking-[0.6px] flex items-center gap-1">
-                <MapPin size={10} /> Ciudad
-              </span>
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full border-none outline-none text-[14px] font-medium bg-transparent cursor-pointer"
-                style={{ color: city ? "#111827" : "#9ca3af" }}
-              >
-                <option value="">Seleccionar ciudad</option>
-                {PERUVIAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <span className="text-gray-400 text-[11px] font-bold uppercase tracking-[0.6px]">Ciudad</span>
+              <span className="text-[14px] font-semibold text-gray-800">Iquitos</span>
             </div>
 
             <div className="w-px bg-gray-100 self-stretch my-3" />
@@ -358,7 +344,7 @@ export default function CatalogPage() {
           {showFilters && (
             <div
               className="bg-white rounded-2xl p-5 mb-6 grid gap-6"
-              style={{ gridTemplateColumns: "repeat(3, 1fr)", border: "1px solid rgba(243,158,16,0.12)" }}
+              style={{ gridTemplateColumns: "1fr auto", border: "1px solid rgba(243,158,16,0.12)" }}
             >
               {/* Price */}
               <div>
@@ -374,24 +360,10 @@ export default function CatalogPage() {
                 </div>
               </div>
 
-              {/* Ciudad */}
-              <div>
-                <div className="text-gray-700 text-[12px] font-bold uppercase tracking-[0.8px] mb-3">Ciudad</div>
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] outline-none bg-white cursor-pointer"
-                  style={{ color: city ? "#111827" : "#9ca3af" }}
-                >
-                  <option value="">Todas las ciudades</option>
-                  {PERUVIAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
               {/* Reset */}
               <div className="flex items-end">
                 <button
-                  onClick={() => { setMaxPrice(20000); setCity(""); setShowFilters(false); }}
+                  onClick={() => { setMaxPrice(20000); setShowFilters(false); }}
                   className="flex items-center gap-1.5 text-gray-500 text-[13px] hover:text-[#f39e10] transition-colors cursor-pointer"
                 >
                   <X size={14} /> Limpiar filtros

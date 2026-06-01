@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Camera, Music2, Sparkles, MapPin, Phone, ChevronLeft, Check } from "lucide-react";
+import { Building2, Camera, Music2, Sparkles, Phone, ChevronLeft, Check } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
-import { PERUVIAN_CITIES } from "@/lib/data";
 
 // ── Wizard ──────────────────────────────────────────────────
 
@@ -77,7 +76,7 @@ export default function NegocioPage() {
     businessName: "",
     description:  "",
     categoryId:   0,
-    city:         "",
+    city:         "Iquitos",
     phone:        "",
   });
 
@@ -114,7 +113,7 @@ export default function NegocioPage() {
           businessName: provider.business_name ?? "",
           description:  provider.description   ?? "",
           categoryId:   provider.category_id   ?? 0,
-          city:         provider.city           ?? "",
+          city:         "Iquitos",
           phone:        (provider.phone ?? "").replace(/^\+51\s?/, ""),
         });
       }
@@ -290,30 +289,6 @@ export default function NegocioPage() {
           <p className="text-gray-400 text-[11px] mt-1 text-right">
             {form.description.length}/300
           </p>
-        </div>
-
-        {/* City */}
-        <div>
-          <label className="text-gray-700 text-[13px] font-semibold block mb-1.5">
-            <span className="flex items-center gap-1.5">
-              <MapPin size={13} className="text-gray-400" />
-              Ciudad principal de operación <span className="text-red-400">*</span>
-            </span>
-          </label>
-          <select
-            value={form.city}
-            onChange={set("city")}
-            required
-            className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-[14px] outline-none bg-white cursor-pointer transition-colors"
-            style={{ fontFamily: "inherit", color: form.city ? "#111827" : "#9ca3af" }}
-            onFocus={(e) => (e.target.style.borderColor = "#f39e10")}
-            onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
-          >
-            <option value="">Selecciona tu ciudad</option>
-            {PERUVIAN_CITIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
         </div>
 
         {/* Phone */}

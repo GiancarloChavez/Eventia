@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Building2, Camera, Music, Sparkles } from "lucide-react";
-import { PERUVIAN_CITIES } from "@/lib/data";
 
 const TABS = [
   { label: "Locales",    cat: "local",      icon: Building2 },
@@ -17,7 +16,6 @@ export type HeroSearchParams = { category: string; city: string; date: string; g
 export function Hero({ onSearch }: { onSearch?: (p: HeroSearchParams) => void }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Locales");
-  const [city, setCity] = useState("");
   const [date, setDate] = useState("");
   const [guests, setGuests] = useState("");
 
@@ -25,10 +23,9 @@ export function Hero({ onSearch }: { onSearch?: (p: HeroSearchParams) => void })
 
   const handleSearch = () => {
     if (onSearch) {
-      onSearch({ category: activeCat, city, date, guests });
+      onSearch({ category: activeCat, city: "Iquitos", date, guests });
     } else {
       const params = new URLSearchParams({ category: activeCat });
-      if (city) params.set("city", city);
       if (date) params.set("date", date);
       router.push(`/catalogo?${params.toString()}`);
     }
@@ -140,17 +137,7 @@ export function Hero({ onSearch }: { onSearch?: (p: HeroSearchParams) => void })
           }}
         >
           <Field label="Ciudad" flex="1.4">
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-full border-none outline-none text-[15px] font-medium bg-transparent cursor-pointer"
-              style={{ color: city ? "#111827" : "#9ca3af" }}
-            >
-              <option value="">Seleccionar ciudad</option>
-              {PERUVIAN_CITIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+            <span className="text-[15px] font-semibold text-gray-800">Iquitos</span>
           </Field>
 
           <Divider />
