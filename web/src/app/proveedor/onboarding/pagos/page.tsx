@@ -68,13 +68,14 @@ export default function PagosPage() {
   const cardRef       = useRef<StripeCardElement | null>(null);
   const mountedRef    = useRef(false);
 
-  const [prefilling,   setPrefilling]   = useState(true);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [cardReady,    setCardReady]    = useState(false);
-  const [cardComplete, setCardComplete] = useState(false);
-  const [cardError,    setCardError]    = useState<string | null>(null);
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
+  const [prefilling,    setPrefilling]    = useState(true);
+  const [clientSecret,  setClientSecret]  = useState<string | null>(null);
+  const [cardReady,     setCardReady]     = useState(false);
+  const [cardMountFail, setCardMountFail] = useState(false);
+  const [cardComplete,  setCardComplete]  = useState(false);
+  const [cardError,     setCardError]     = useState<string | null>(null);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState<string | null>(null);
 
   // ── Load provider + create SetupIntent ───────────────────
 
@@ -133,11 +134,23 @@ export default function PagosPage() {
       cardElement.mount(cardMountRef.current);
       cardRef.current = cardElement;
 
-      cardElement.on("ready", () => setCardReady(true));
+      const readyRef = { value: false };
+
+      cardElement.on("ready", () => {
+        readyRef.value = true;
+        setCardReady(true);
+      });
       cardElement.on("change", (e) => {
         setCardError(e.error?.message ?? null);
         setCardComplete(e.complete);
       });
+
+      // If card never becomes ready in 12s → connection error
+      const timeout = setTimeout(() => {
+        if (!readyRef.value) setCardMountFail(true);
+      }, 12_000);
+
+      return () => clearTimeout(timeout);
     });
   }, [clientSecret]);
 
@@ -246,17 +259,35 @@ export default function PagosPage() {
           </div>
 
           {/* Stripe card element container */}
-          <div
-            className="w-full px-3.5 py-3.5 rounded-xl border border-gray-200 bg-white transition-colors"
-            style={{ minHeight: "44px" }}
-          >
-            {!cardReady && (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin" />
+          <div className="relative">
+            {/* Loading / error overlay — shown until card is ready */}
+            {!cardReady && !cardMountFail && (
+              <div
+                className="w-full px-3.5 py-3.5 rounded-xl border border-gray-200 bg-white flex items-center gap-2"
+                style={{ minHeight: "44px" }}
+              >
+                <div className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin shrink-0" />
                 <span className="text-gray-300 text-[13px]">Cargando formulario seguro…</span>
               </div>
             )}
-            <div ref={cardMountRef} style={{ display: cardReady ? "block" : "none" }} />
+
+            {cardMountFail && (
+              <div className="w-full px-3.5 py-3.5 rounded-xl border border-red-100 bg-red-50 text-red-600 text-[13px]">
+                No se pudo conectar con Stripe. Verifica tu conexión a internet y recarga la página.
+              </div>
+            )}
+
+            {/* Stripe mounts its iframe here — must ALWAYS stay in the DOM */}
+            <div
+              ref={cardMountRef}
+              className="w-full px-3.5 py-3.5 rounded-xl border border-gray-200 bg-white"
+              style={{
+                minHeight: "44px",
+                visibility: cardReady ? "visible" : "hidden",
+                position:   cardReady ? "relative" : "absolute",
+                top: 0, left: 0, right: 0,
+              }}
+            />
           </div>
 
           {cardError && (
