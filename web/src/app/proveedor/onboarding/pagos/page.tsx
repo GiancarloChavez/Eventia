@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Check, CreditCard, ShieldCheck, Zap, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { loadStripe } from "@stripe/stripe-js";
+import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
+import { ChevronLeft, Check, CreditCard, ShieldCheck, Lock } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
+
+// Loaded once at module level to avoid recreating the Promise on each render
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // ── Wizard ──────────────────────────────────────────────────
 
@@ -55,68 +60,125 @@ function WizardProgress({ current }: { current: number }) {
 
 // ── Page ────────────────────────────────────────────────────
 
-function PagosContent() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
-  const incomplete   = searchParams.get("incomplete") === "1";
+export default function PagosPage() {
+  const router = useRouter();
 
-  const [loading,    setLoading]    = useState(false);
-  const [prefilling, setPrefilling] = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
-  const [hasAccount, setHasAccount] = useState(false);
+  const cardMountRef  = useRef<HTMLDivElement>(null);
+  const stripeRef     = useRef<Stripe | null>(null);
+  const cardRef       = useRef<StripeCardElement | null>(null);
+  const mountedRef    = useRef(false);
+
+  const [prefilling,   setPrefilling]   = useState(true);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [cardReady,    setCardReady]    = useState(false);
+  const [cardComplete, setCardComplete] = useState(false);
+  const [cardError,    setCardError]    = useState<string | null>(null);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState<string | null>(null);
+
+  // ── Load provider + create SetupIntent ───────────────────
 
   useEffect(() => {
-    const prefill = async () => {
+    const init = async () => {
       const supabase = getSupabase();
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session) {
-        router.replace("/auth");
-        return;
-      }
+      if (!session) { router.replace("/auth"); return; }
 
       const { data: provider } = await supabase
         .from("providers")
-        .select("stripe_account_id, stripe_onboarding_complete, onboarding_step")
+        .select("id, onboarding_step")
         .eq("user_id", session.user.id)
         .single();
 
-      if (!provider) {
-        router.replace("/auth/registro?tipo=proveedor");
-        return;
-      }
+      if (!provider) { router.replace("/auth/registro?tipo=proveedor"); return; }
+      if (provider.onboarding_step >= 4) { router.replace("/proveedor"); return; }
 
-      if (provider.onboarding_step >= 4) {
-        router.replace("/proveedor");
-        return;
-      }
+      const res  = await fetch("/api/stripe/setup-intent", { method: "POST" });
+      const data = await res.json();
 
-      setHasAccount(!!provider.stripe_account_id);
+      if (!res.ok) { setError(data.error ?? "Error al inicializar el formulario."); setPrefilling(false); return; }
+
+      setClientSecret(data.clientSecret);
       setPrefilling(false);
     };
-    prefill();
+    init();
   }, [router]);
 
-  const handleConnect = async () => {
+  // ── Mount Stripe Card Element when clientSecret is ready ─
+
+  useEffect(() => {
+    if (!clientSecret || !cardMountRef.current || mountedRef.current) return;
+    mountedRef.current = true;
+
+    stripePromise.then((stripe) => {
+      if (!stripe || !cardMountRef.current) return;
+      stripeRef.current = stripe;
+
+      const elements   = stripe.elements();
+      const cardElement = elements.create("card", {
+        hidePostalCode: true,
+        style: {
+          base: {
+            fontSize: "14px",
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontWeight: "400",
+            color: "#111827",
+            "::placeholder": { color: "#9ca3af" },
+          },
+          invalid: { color: "#ef4444", iconColor: "#ef4444" },
+        },
+      });
+
+      cardElement.mount(cardMountRef.current);
+      cardRef.current = cardElement;
+
+      cardElement.on("ready", () => setCardReady(true));
+      cardElement.on("change", (e) => {
+        setCardError(e.error?.message ?? null);
+        setCardComplete(e.complete);
+      });
+    });
+  }, [clientSecret]);
+
+  // ── Submit ───────────────────────────────────────────────
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripeRef.current || !cardRef.current || !clientSecret) return;
+
     setError(null);
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/stripe/connect/onboard", { method: "POST" });
-      const data = await res.json();
+    const { setupIntent, error: stripeError } = await stripeRef.current.confirmCardSetup(
+      clientSecret,
+      { payment_method: { card: cardRef.current } }
+    );
 
-      if (!res.ok) {
-        setError(data.error ?? "No se pudo iniciar la conexión con Stripe.");
-        setLoading(false);
-        return;
-      }
-
-      window.location.href = data.url;
-    } catch {
-      setError("Error de red. Intenta de nuevo.");
+    if (stripeError || !setupIntent?.payment_method) {
+      setError(stripeError?.message ?? "No se pudo validar la tarjeta. Intenta de nuevo.");
       setLoading(false);
+      return;
     }
+
+    const res = await fetch("/api/stripe/save-card", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentMethodId: setupIntent.payment_method }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Error al guardar la tarjeta.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+    router.push("/proveedor/onboarding/revision");
   };
+
+  // ── Render ───────────────────────────────────────────────
 
   if (prefilling) {
     return (
@@ -138,7 +200,6 @@ function PagosContent() {
         Volver
       </button>
 
-      {/* Wizard */}
       <WizardProgress current={4} />
 
       {/* Header */}
@@ -150,22 +211,12 @@ function PagosContent() {
           Cuenta de proveedor · Paso 4 de 5
         </div>
         <h1 className="text-gray-900 text-[26px] font-black tracking-[-0.5px] mb-1.5">
-          Cuenta de pagos
+          Método de pago
         </h1>
         <p className="text-gray-500 text-[14px]">
-          Conecta tu cuenta bancaria para recibir los pagos de tus eventos.
+          Agrega tu tarjeta de débito para recibir los pagos de tus servicios.
         </p>
       </div>
-
-      {/* Incomplete warning */}
-      {incomplete && (
-        <div className="mb-5 flex items-start gap-3 px-4 py-3.5 rounded-xl bg-amber-50 border border-amber-200">
-          <AlertCircle size={16} className="text-amber-500 mt-0.5 shrink-0" />
-          <p className="text-amber-800 text-[13px] leading-relaxed">
-            No completaste la configuración en Stripe. Puedes retomar desde donde lo dejaste.
-          </p>
-        </div>
-      )}
 
       {error && (
         <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[13px]">
@@ -173,86 +224,87 @@ function PagosContent() {
         </div>
       )}
 
-      {/* Stripe Connect card */}
-      <div
-        className="rounded-2xl border p-6 mb-5"
-        style={{ background: "#fafafa", borderColor: "#e5e7eb" }}
-      >
-        {/* Card header */}
-        <div className="flex items-center gap-3 mb-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+
+        {/* Card input card */}
+        <div
+          className="rounded-2xl border p-5"
+          style={{ background: "#fafafa", borderColor: "#e5e7eb" }}
+        >
+          {/* Card icon + label */}
+          <div className="flex items-center gap-3 mb-5">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "rgba(243,158,16,0.10)" }}
+            >
+              <CreditCard size={20} style={{ color: "#f39e10" }} strokeWidth={1.8} />
+            </div>
+            <div>
+              <div className="text-gray-900 text-[14px] font-bold">Datos de la tarjeta</div>
+              <div className="text-gray-400 text-[12px]">Débito / Crédito</div>
+            </div>
+          </div>
+
+          {/* Stripe card element container */}
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "rgba(243,158,16,0.10)" }}
+            className="w-full px-3.5 py-3.5 rounded-xl border border-gray-200 bg-white transition-colors"
+            style={{ minHeight: "44px" }}
           >
-            <CreditCard size={22} style={{ color: "#f39e10" }} strokeWidth={1.8} />
+            {!cardReady && (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin" />
+                <span className="text-gray-300 text-[13px]">Cargando formulario seguro…</span>
+              </div>
+            )}
+            <div ref={cardMountRef} style={{ display: cardReady ? "block" : "none" }} />
           </div>
-          <div>
-            <div className="text-gray-900 text-[15px] font-bold">Stripe Connect Express</div>
-            <div className="text-gray-500 text-[12px]">Procesamiento de pagos seguro</div>
-          </div>
+
+          {cardError && (
+            <p className="text-red-500 text-[12px] mt-2">{cardError}</p>
+          )}
         </div>
 
-        {/* Benefits */}
-        <div className="flex flex-col gap-3 mb-6">
+        {/* Security badges */}
+        <div className="flex flex-col gap-2.5">
           {[
-            { icon: Zap,         text: "Recibe el pago directo a tu cuenta bancaria." },
-            { icon: ShieldCheck, text: "Eventia retiene la comisión automáticamente." },
-            { icon: CreditCard,  text: "Acepta tarjetas de crédito, débito y más." },
+            { icon: ShieldCheck, text: "Tus datos son procesados directamente por Stripe. Eventia nunca almacena el número de tu tarjeta." },
+            { icon: Lock,        text: "Conexión cifrada SSL. Solo validamos la tarjeta — no se realizará ningún cobro en este paso." },
           ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-3">
+            <div key={text} className="flex items-start gap-3">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
                 style={{ background: "rgba(243,158,16,0.08)" }}
               >
-                <Icon size={14} style={{ color: "#f39e10" }} strokeWidth={1.8} />
+                <Icon size={13} style={{ color: "#f39e10" }} strokeWidth={1.8} />
               </div>
-              <span className="text-gray-600 text-[13px]">{text}</span>
+              <span className="text-gray-400 text-[12px] leading-relaxed">{text}</span>
             </div>
           ))}
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-100 mb-5" />
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={loading || !cardComplete}
+          className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold cursor-pointer border-none flex items-center justify-center gap-2 mt-1"
+          style={{
+            background: "linear-gradient(135deg, #f59e0b 0%, #f39e10 55%, #e88e00 100%)",
+            boxShadow: "0 4px 20px rgba(243,158,16,0.4)",
+            opacity: loading || !cardComplete ? 0.6 : 1,
+            transition: "opacity 200ms",
+          }}
+        >
+          {loading ? (
+            <>
+              <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              Validando tarjeta…
+            </>
+          ) : (
+            "Guardar tarjeta →"
+          )}
+        </button>
 
-        {/* Info note */}
-        <p className="text-gray-400 text-[12px] leading-relaxed">
-          Serás redirigido a Stripe para completar el proceso. Solo te tomará unos minutos.
-          Necesitarás tu DNI o RUC y datos bancarios.
-        </p>
-      </div>
-
-      {/* CTA */}
-      <button
-        type="button"
-        onClick={handleConnect}
-        disabled={loading}
-        className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold cursor-pointer border-none"
-        style={{
-          background: "linear-gradient(135deg, #f59e0b 0%, #f39e10 55%, #e88e00 100%)",
-          boxShadow: "0 4px 20px rgba(243,158,16,0.4)",
-          opacity: loading ? 0.75 : 1,
-          transition: "opacity 200ms",
-        }}
-      >
-        {loading
-          ? "Redirigiendo a Stripe..."
-          : hasAccount
-          ? "Retomar configuración →"
-          : "Conectar cuenta de pagos →"}
-      </button>
-
-      <p className="text-center text-gray-400 text-[11px] mt-3">
-        Tus datos financieros son gestionados directamente por Stripe. Eventia no almacena
-        información bancaria.
-      </p>
+      </form>
     </div>
-  );
-}
-
-export default function PagosPage() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center py-24"><div className="w-7 h-7 rounded-full border-2 border-[#f39e10] border-t-transparent animate-spin" /></div>}>
-      <PagosContent />
-    </Suspense>
   );
 }

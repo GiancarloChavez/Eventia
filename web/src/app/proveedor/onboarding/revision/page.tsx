@@ -75,7 +75,9 @@ interface ProviderData {
   category_id: number | null;
   city: string | null;
   phone: string | null;
-  stripe_onboarding_complete: boolean;
+  stripe_payment_method_id: string | null;
+  stripe_card_last4: string | null;
+  stripe_card_brand: string | null;
   onboarding_step: number;
 }
 
@@ -141,7 +143,7 @@ export default function RevisionPage() {
 
       const { data: prov } = await supabase
         .from("providers")
-        .select("id, business_name, description, category_id, city, phone, stripe_onboarding_complete, onboarding_step")
+        .select("id, business_name, description, category_id, city, phone, stripe_payment_method_id, stripe_card_last4, stripe_card_brand, onboarding_step")
         .eq("user_id", session.user.id)
         .single();
 
@@ -304,12 +306,12 @@ export default function RevisionPage() {
       </SectionCard>
 
       {/* ── Pagos ── */}
-      <SectionCard title="Cuenta de pagos">
+      <SectionCard title="Método de pago">
         <div className="flex items-center gap-3">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
             style={{
-              background: provider.stripe_onboarding_complete
+              background: provider.stripe_payment_method_id
                 ? "rgba(16,185,129,0.10)"
                 : "rgba(243,158,16,0.10)",
             }}
@@ -317,17 +319,19 @@ export default function RevisionPage() {
             <CreditCard
               size={13}
               strokeWidth={1.8}
-              style={{ color: provider.stripe_onboarding_complete ? "#10b981" : "#f39e10" }}
+              style={{ color: provider.stripe_payment_method_id ? "#10b981" : "#f39e10" }}
             />
           </div>
           <div>
             <div className="text-gray-400 text-[11px] uppercase tracking-[0.5px] font-semibold mb-0.5">
-              Stripe Connect
+              Tarjeta de débito
             </div>
-            {provider.stripe_onboarding_complete ? (
+            {provider.stripe_payment_method_id ? (
               <div className="flex items-center gap-1.5 text-[13px] text-emerald-700 font-semibold">
                 <CheckCircle2 size={13} />
-                Cuenta conectada
+                {provider.stripe_card_brand
+                  ? `${provider.stripe_card_brand.charAt(0).toUpperCase() + provider.stripe_card_brand.slice(1)} •••• ${provider.stripe_card_last4}`
+                  : "Tarjeta guardada"}
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-[13px] text-amber-600">
@@ -338,11 +342,11 @@ export default function RevisionPage() {
           </div>
         </div>
 
-        {!provider.stripe_onboarding_complete && (
+        {!provider.stripe_payment_method_id && (
           <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-amber-50 border border-amber-200 mt-1">
             <AlertCircle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p className="text-amber-800 text-[12px] leading-relaxed">
-              No conectaste tu cuenta de pagos. Puedes enviar tu solicitud igual, pero necesitarás
+              No agregaste una tarjeta. Puedes enviar tu solicitud igual, pero necesitarás
               configurarla antes de que tu perfil sea aprobado.
             </p>
           </div>
