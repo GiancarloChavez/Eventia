@@ -153,7 +153,7 @@ function RegistroForm() {
 
     const tipo = isProvider ? "proveedor" : "cliente";
     const nextUrl = `/auth/registro?tipo=${tipo}&verified=true`;
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
+    const redirectTo = `${window.location.origin}/auth/verify?next=${encodeURIComponent(nextUrl)}`;
 
     const res = await fetch("/api/auth/send-otp", {
       method: "POST",
@@ -178,7 +178,7 @@ function RegistroForm() {
 
     const tipo = isProvider ? "proveedor" : "cliente";
     const nextUrl = `/auth/registro?tipo=${tipo}&verified=true`;
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
+    const redirectTo = `${window.location.origin}/auth/verify?next=${encodeURIComponent(nextUrl)}`;
 
     await fetch("/api/auth/send-otp", {
       method: "POST",
