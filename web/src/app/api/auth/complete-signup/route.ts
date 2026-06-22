@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     await adminSupabase
       .from("providers")
       .upsert(
-        { user_id: userId, business_name: "", status: "pending" },
+        { user_id: userId, business_name: "", status: "draft" },
         { onConflict: "user_id", ignoreDuplicates: true }
       );
   }

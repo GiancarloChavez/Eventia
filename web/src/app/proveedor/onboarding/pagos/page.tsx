@@ -69,6 +69,7 @@ export default function PagosPage() {
   const mountedRef    = useRef(false);
 
   const [prefilling,    setPrefilling]    = useState(true);
+  const [providerId,    setProviderId]    = useState<string | null>(null);
   const [clientSecret,  setClientSecret]  = useState<string | null>(null);
   const [cardReady,     setCardReady]     = useState(false);
   const [cardMountFail, setCardMountFail] = useState(false);
@@ -94,6 +95,8 @@ export default function PagosPage() {
 
       if (!provider) { router.replace("/auth/registro?tipo=proveedor"); return; }
       if (provider.onboarding_step >= 4) { router.replace("/proveedor"); return; }
+
+      setProviderId(provider.id);
 
       const res  = await fetch("/api/stripe/setup-intent", { method: "POST" });
       const data = await res.json();
@@ -153,6 +156,17 @@ export default function PagosPage() {
       return () => clearTimeout(timeout);
     });
   }, [clientSecret]);
+
+  // ── Skip ─────────────────────────────────────────────────
+
+  const handleSkip = async () => {
+    setLoading(true);
+    await getSupabase()
+      .from("providers")
+      .update({ onboarding_step: 4 })
+      .eq("id", providerId);
+    router.push("/proveedor/onboarding/revision");
+  };
 
   // ── Submit ───────────────────────────────────────────────
 
@@ -333,6 +347,16 @@ export default function PagosPage() {
           ) : (
             "Guardar tarjeta →"
           )}
+        </button>
+
+        {/* Skip */}
+        <button
+          type="button"
+          onClick={handleSkip}
+          disabled={loading}
+          className="w-full py-2.5 text-gray-400 text-[13px] cursor-pointer bg-transparent border-none hover:text-gray-600 transition-colors"
+        >
+          Omitir por ahora
         </button>
 
       </form>
