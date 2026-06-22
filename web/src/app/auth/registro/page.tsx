@@ -7,6 +7,7 @@ import {
   Eye, EyeOff, User, Mail, Lock, Phone,
   ChevronLeft, Check, ShieldCheck,
 } from "lucide-react";
+import { getSupabase } from "@/lib/supabase";
 
 // ── Wizard ─────────────────────────────────────────────────────
 
@@ -168,11 +169,24 @@ function RegistroForm() {
       }),
     });
 
-    setLoading(false);
-
     if (!res.ok) {
+      setLoading(false);
       const body = await res.json().catch(() => ({}));
       setError(body.error ?? "Error al crear la cuenta.");
+      return;
+    }
+
+    // Sign in client-side so the browser session cookie is set correctly
+    const { error: signInError } = await getSupabase().auth.signInWithPassword({
+      email,
+      password: form.password,
+    });
+
+    setLoading(false);
+
+    if (signInError) {
+      setError("Cuenta creada. Inicia sesión para continuar.");
+      router.push("/auth/login");
       return;
     }
 

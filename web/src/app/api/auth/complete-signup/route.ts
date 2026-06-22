@@ -1,6 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { createSupabaseServer } from "@/lib/supabase-server";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -46,19 +44,6 @@ export async function POST(request: NextRequest) {
         { user_id: user.id, business_name: "", status: "draft" },
         { onConflict: "user_id", ignoreDuplicates: true }
       );
-  }
-
-  // Sign in to establish the session cookie
-  const cookieStore = await cookies();
-  const supabase = createSupabaseServer(cookieStore);
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (signInError) {
-    console.error("[complete-signup] signIn error:", signInError.message);
-    return NextResponse.json(
-      { error: "Cuenta creada, pero error al iniciar sesión. Intenta ingresar manualmente." },
-      { status: 500 }
-    );
   }
 
   return NextResponse.json({ ok: true });
