@@ -13,11 +13,10 @@ export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
   const supabase = createSupabaseServer(cookieStore);
 
-  // El OTP fue generado con type 'magiclink', se verifica con el mismo tipo
   const { error } = await supabase.auth.verifyOtp({
     email,
     token: code,
-    type: "magiclink",
+    type: "email",
   });
 
   if (error) {
