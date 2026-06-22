@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Eye, EyeOff, User, Mail, Lock, Phone,
-  ChevronLeft, Check, ShieldCheck, MailOpen,
+  ChevronLeft, Check, ShieldCheck,
 } from "lucide-react";
-import { getSupabase } from "@/lib/supabase";
 
 // ── Wizard ─────────────────────────────────────────────────────
 
@@ -96,7 +95,7 @@ function InputField({
 
 // ── Main form ───────────────────────────────────────────────────
 
-type Substep = "email" | "awaiting" | "profile";
+type Substep = "email" | "profile";
 
 function RegistroForm() {
   const searchParams = useSearchParams();
@@ -109,7 +108,6 @@ function RegistroForm() {
   const [email,        setEmail]        = useState("");
   const [showPwd,      setShowPwd]      = useState(false);
   const [loading,      setLoading]      = useState(false);
-  const [resending,    setResending]    = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
 
@@ -124,19 +122,6 @@ function RegistroForm() {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  // ── Auto-advance when returning from magic link ───────────────
-  useEffect(() => {
-    if (searchParams.get("verified") !== "true") return;
-    const sb = getSupabase();
-    sb.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email) {
-        setEmail(user.email);
-        setSubstep("profile");
-      }
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // ── Google OAuth (proveedor only) ─────────────────────────────
 
   const handleGoogleOAuth = () => {
@@ -144,51 +129,19 @@ function RegistroForm() {
     window.location.href = "/api/auth/oauth?flow=provider";
   };
 
-  // ── Sub-paso 1: Enviar magic link ─────────────────────────────
+  // ── Sub-paso 1: Validar email y avanzar ───────────────────────
 
-  const handleSendLink = async (e: React.FormEvent) => {
+  const handleEmailNext = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-
-    const tipo = isProvider ? "proveedor" : "cliente";
-    const nextUrl = `/auth/registro?tipo=${tipo}&verified=true`;
-    const redirectTo = `${window.location.origin}/auth/verify?next=${encodeURIComponent(nextUrl)}`;
-
-    const res = await fetch("/api/auth/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, redirectTo }),
-    });
-
-    setLoading(false);
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Error al enviar el enlace.");
+    if (!email.includes("@")) {
+      setError("Ingresa un correo válido.");
       return;
     }
-
-    setSubstep("awaiting");
+    setSubstep("profile");
   };
 
-  const handleResend = async () => {
-    setResending(true);
-    setError(null);
-
-    const tipo = isProvider ? "proveedor" : "cliente";
-    const nextUrl = `/auth/registro?tipo=${tipo}&verified=true`;
-    const redirectTo = `${window.location.origin}/auth/verify?next=${encodeURIComponent(nextUrl)}`;
-
-    await fetch("/api/auth/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, redirectTo }),
-    });
-    setResending(false);
-  };
-
-  // ── Sub-paso 3: Completar registro ────────────────────────────
+  // ── Sub-paso 2: Crear cuenta ──────────────────────────────────
 
   const handleCompleteSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,28 +185,6 @@ function RegistroForm() {
   const pwdColors   = ["#ef4444", "#f59e0b", "#22c55e"];
   const pwdLabels   = ["Débil", "Media", "Fuerte"];
 
-  // ── Back button helper ─────────────────────────────────────────
-
-  const BackButton = ({ to }: { to: Substep | null }) =>
-    to ? (
-      <button
-        type="button"
-        onClick={() => { setSubstep(to); setError(null); }}
-        className="flex items-center gap-1.5 text-gray-400 text-[13px] hover:text-gray-700 transition-colors mb-6 bg-transparent border-none cursor-pointer p-0"
-      >
-        <ChevronLeft size={15} />
-        Volver
-      </button>
-    ) : (
-      <Link
-        href="/auth"
-        className="flex items-center gap-1.5 text-gray-400 text-[13px] hover:text-gray-700 transition-colors mb-6"
-      >
-        <ChevronLeft size={15} />
-        Volver
-      </Link>
-    );
-
   const submitBtnStyle = {
     background: isProvider
       ? "linear-gradient(135deg, #f59e0b 0%, #f39e10 55%, #e88e00 100%)"
@@ -273,7 +204,13 @@ function RegistroForm() {
       {/* ══ SUB-PASO 1: Email ══════════════════════════════════ */}
       {substep === "email" && (
         <>
-          <BackButton to={null} />
+          <Link
+            href="/auth"
+            className="flex items-center gap-1.5 text-gray-400 text-[13px] hover:text-gray-700 transition-colors mb-6"
+          >
+            <ChevronLeft size={15} />
+            Volver
+          </Link>
 
           {isProvider && <WizardProgress current={1} />}
 
@@ -326,7 +263,7 @@ function RegistroForm() {
             </div>
           )}
 
-          <form onSubmit={handleSendLink} className="flex flex-col gap-3.5">
+          <form onSubmit={handleEmailNext} className="flex flex-col gap-3.5">
             <InputField
               icon={<Mail size={14} />}
               label="Correo electrónico"
@@ -339,11 +276,10 @@ function RegistroForm() {
             />
             <button
               type="submit"
-              disabled={loading}
               className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold mt-1 cursor-pointer border-none"
               style={submitBtnStyle}
             >
-              {loading ? "Enviando enlace..." : "Enviar enlace de verificación →"}
+              Continuar →
             </button>
           </form>
 
@@ -360,71 +296,17 @@ function RegistroForm() {
         </>
       )}
 
-      {/* ══ SUB-PASO 2: Esperando clic en enlace ══════════════ */}
-      {substep === "awaiting" && (
-        <>
-          <BackButton to="email" />
-
-          {isProvider && <WizardProgress current={1} />}
-
-          <div className="flex flex-col items-center text-center py-4">
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
-              style={{ background: `${accent}12`, border: `2px solid ${accent}25` }}
-            >
-              <MailOpen size={36} style={{ color: accent }} strokeWidth={1.5} />
-            </div>
-
-            <h1 className="text-gray-900 text-[26px] font-black tracking-[-0.5px] mb-3">
-              Revisa tu correo
-            </h1>
-            <p className="text-gray-500 text-[14px] leading-[1.7] mb-2 max-w-[320px]">
-              Enviamos un enlace de confirmación a
-            </p>
-            <p className="text-gray-900 font-bold text-[15px] mb-6">{email}</p>
-
-            <div
-              className="w-full rounded-2xl px-5 py-4 mb-6 text-left"
-              style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
-            >
-              {[
-                "Abre el correo que te enviamos",
-                "Haz clic en el botón «Confirmar correo»",
-                "Serás redirigido aquí automáticamente",
-              ].map((step, i) => (
-                <div key={i} className="flex items-start gap-3 py-2.5 border-b border-gray-100 last:border-0">
-                  <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5"
-                    style={{ background: accent, color: "#fff" }}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="text-gray-600 text-[13px]">{step}</span>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-gray-400 text-[12px] mb-4">
-              Revisa también tu carpeta de spam si no lo encuentras.
-            </p>
-
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={resending}
-              className="text-[13px] font-semibold cursor-pointer bg-transparent border-none"
-              style={{ color: accent, opacity: resending ? 0.6 : 1 }}
-            >
-              {resending ? "Enviando..." : "¿No llegó? Reenviar enlace"}
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* ══ SUB-PASO 3: Nombre y contraseña ═══════════════════ */}
+      {/* ══ SUB-PASO 2: Nombre y contraseña ═══════════════════ */}
       {substep === "profile" && (
         <>
-          <BackButton to={null} />
+          <button
+            type="button"
+            onClick={() => { setSubstep("email"); setError(null); }}
+            className="flex items-center gap-1.5 text-gray-400 text-[13px] hover:text-gray-700 transition-colors mb-6 bg-transparent border-none cursor-pointer p-0"
+          >
+            <ChevronLeft size={15} />
+            Volver
+          </button>
 
           {isProvider && <WizardProgress current={1} />}
 
@@ -443,9 +325,7 @@ function RegistroForm() {
               style={{ background: "rgba(34,197,94,0.08)", color: "#15803d" }}
             >
               <ShieldCheck size={14} strokeWidth={2} />
-              <span>
-                Correo verificado: <strong>{email}</strong>
-              </span>
+              <span>{email}</span>
             </div>
           </div>
 
@@ -456,7 +336,6 @@ function RegistroForm() {
           )}
 
           <form onSubmit={handleCompleteSignup} className="flex flex-col gap-3.5">
-            {/* Nombre */}
             <InputField
               icon={<User size={14} />}
               label={isProvider ? "Nombre del contacto" : "Nombre completo"}
@@ -468,7 +347,6 @@ function RegistroForm() {
               required
             />
 
-            {/* Teléfono (cliente only) */}
             {!isProvider && (
               <InputField
                 icon={<Phone size={14} />}
@@ -481,16 +359,12 @@ function RegistroForm() {
               />
             )}
 
-            {/* Contraseña */}
             <div>
               <label className="text-gray-700 text-[13px] font-semibold block mb-1.5">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock
-                  size={14}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                />
+                <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 <input
                   type={showPwd ? "text" : "password"}
                   value={form.password}
@@ -527,16 +401,12 @@ function RegistroForm() {
               )}
             </div>
 
-            {/* Confirmar contraseña */}
             <div>
               <label className="text-gray-700 text-[13px] font-semibold block mb-1.5">
                 Confirmar contraseña
               </label>
               <div className="relative">
-                <Lock
-                  size={14}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                />
+                <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 <input
                   type={showPwd ? "text" : "password"}
                   value={form.confirm}
@@ -546,8 +416,7 @@ function RegistroForm() {
                   className="w-full pl-10 pr-10 py-3 rounded-xl border text-[14px] outline-none transition-colors"
                   style={{
                     fontFamily: "inherit",
-                    borderColor:
-                      form.confirm && form.confirm !== form.password ? "#fca5a5" : "#e5e7eb",
+                    borderColor: form.confirm && form.confirm !== form.password ? "#fca5a5" : "#e5e7eb",
                   }}
                   onFocus={(e) => {
                     if (!form.confirm || form.confirm === form.password)
@@ -559,11 +428,7 @@ function RegistroForm() {
                   }}
                 />
                 {form.confirm && form.confirm === form.password && (
-                  <Check
-                    size={14}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2"
-                    style={{ color: "#22c55e" }}
-                  />
+                  <Check size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2" style={{ color: "#22c55e" }} />
                 )}
               </div>
               {form.confirm && form.confirm !== form.password && (
@@ -571,7 +436,6 @@ function RegistroForm() {
               )}
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -580,9 +444,7 @@ function RegistroForm() {
             >
               {loading
                 ? "Creando cuenta..."
-                : isProvider
-                ? "Continuar →"
-                : "Crear mi cuenta"}
+                : isProvider ? "Continuar →" : "Crear mi cuenta"}
             </button>
           </form>
         </>

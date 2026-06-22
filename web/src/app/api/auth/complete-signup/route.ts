@@ -11,54 +11,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Datos incompletos." }, { status: 400 });
   }
 
-  const cookieStore = await cookies();
-  const supabase = createSupabaseServer(cookieStore);
-
-  // Session was established by verify-otp
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) {
-    return NextResponse.json(
-      { error: "Sesión expirada. Vuelve a verificar tu correo." },
-      { status: 401 }
-    );
-  }
-
-  const userId = session.user.id;
-
-  // Set password and metadata on the authenticated user
-  const { error: updateError } = await supabase.auth.updateUser({
-    password,
-    data: { full_name, role, ...(phone ? { phone } : {}) },
-  });
-
-  if (updateError) {
-    console.error("[complete-signup] updateUser error:", updateError.message);
-    return NextResponse.json({ error: updateError.message }, { status: 400 });
-  }
-
   const adminSupabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Update profile (created by handle_new_user trigger)
+  // Create user directly — bypasses email confirmation entirely
+  const { data: { user }, error: createError } = await adminSupabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name, role, ...(phone ? { phone } : {}) },
+  });
+
+  if (createError || !user) {
+    console.error("[complete-signup] createUser error:", createError?.message);
+    const msg = createError?.message?.includes("already registered")
+      ? "Este correo ya tiene una cuenta. Inicia sesión."
+      : (createError?.message ?? "Error al crear la cuenta.");
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
+
+  // Update profile row (created by handle_new_user trigger)
   await adminSupabase
     .from("profiles")
     .update({ full_name, role, phone: phone ?? null })
-    .eq("id", userId);
+    .eq("id", user.id);
 
-  // Ensure providers row exists for provider role
+  // Create providers row for provider role
   if (role === "provider") {
     await adminSupabase
       .from("providers")
       .upsert(
-        { user_id: userId, business_name: "", status: "draft" },
+        { user_id: user.id, business_name: "", status: "draft" },
         { onConflict: "user_id", ignoreDuplicates: true }
       );
   }
 
-  // Re-sign in to get a fresh session with the new password
+  // Sign in to establish the session cookie
+  const cookieStore = await cookies();
+  const supabase = createSupabaseServer(cookieStore);
   const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
   if (signInError) {
