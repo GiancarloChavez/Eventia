@@ -47,7 +47,7 @@ function LoginContent() {
     const { data, error: signInError } = await sb.auth.signInWithPassword({ email, password });
 
     if (signInError) {
-      setError("Correo o contraseña incorrectos.");
+      setError(signInError.message);
       setLoading(false);
       return;
     }

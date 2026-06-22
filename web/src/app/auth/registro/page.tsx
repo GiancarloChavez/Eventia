@@ -185,8 +185,8 @@ function RegistroForm() {
     setLoading(false);
 
     if (signInError) {
-      setError("Cuenta creada. Inicia sesión para continuar.");
-      router.push("/auth/login");
+      setError(`Cuenta creada pero no se pudo iniciar sesión: ${signInError.message}`);
+      setLoading(false);
       return;
     }
 
