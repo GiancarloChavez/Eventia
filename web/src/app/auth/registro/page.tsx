@@ -132,10 +132,9 @@ function RegistroForm() {
 
   // ── Sub-paso 1: Validar email y avanzar ───────────────────────
 
-  const handleEmailNext = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEmailNext = () => {
     setError(null);
-    if (!email.includes("@")) {
+    if (!email || !email.includes("@")) {
       setError("Ingresa un correo válido.");
       return;
     }
@@ -277,7 +276,7 @@ function RegistroForm() {
             </div>
           )}
 
-          <form onSubmit={handleEmailNext} className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-3.5">
             <InputField
               icon={<Mail size={14} />}
               label="Correo electrónico"
@@ -289,13 +288,14 @@ function RegistroForm() {
               required
             />
             <button
-              type="submit"
+              type="button"
+              onClick={handleEmailNext}
               className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold mt-1 cursor-pointer border-none"
               style={submitBtnStyle}
             >
               Continuar →
             </button>
-          </form>
+          </div>
 
           <p className="text-center text-gray-500 text-[13px] mt-5">
             ¿Ya tienes cuenta?{" "}
