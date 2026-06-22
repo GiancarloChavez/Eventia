@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Eye, EyeOff, User, Mail, Lock, Phone,
-  ChevronLeft, Check, ShieldCheck,
+  ChevronLeft, Check, ShieldCheck, MailOpen,
 } from "lucide-react";
+import { getSupabase } from "@/lib/supabase";
 
 // ── Wizard ─────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ function InputField({
 
 // ── Main form ───────────────────────────────────────────────────
 
-type Substep = "email" | "otp" | "profile";
+type Substep = "email" | "awaiting" | "profile";
 
 function RegistroForm() {
   const searchParams = useSearchParams();
@@ -106,7 +107,6 @@ function RegistroForm() {
 
   const [substep,      setSubstep]      = useState<Substep>("email");
   const [email,        setEmail]        = useState("");
-  const [otp,          setOtp]          = useState("");
   const [showPwd,      setShowPwd]      = useState(false);
   const [loading,      setLoading]      = useState(false);
   const [resending,    setResending]    = useState(false);
@@ -124,6 +124,19 @@ function RegistroForm() {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  // ── Auto-advance when returning from magic link ───────────────
+  useEffect(() => {
+    if (searchParams.get("verified") !== "true") return;
+    const sb = getSupabase();
+    sb.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        setEmail(user.email);
+        setSubstep("profile");
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Google OAuth (proveedor only) ─────────────────────────────
 
   const handleGoogleOAuth = () => {
@@ -131,63 +144,46 @@ function RegistroForm() {
     window.location.href = "/api/auth/oauth?flow=provider";
   };
 
-  // ── Sub-paso 1: Enviar OTP ────────────────────────────────────
+  // ── Sub-paso 1: Enviar magic link ─────────────────────────────
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleSendLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    const tipo = isProvider ? "proveedor" : "cliente";
+    const nextUrl = `/auth/registro?tipo=${tipo}&verified=true`;
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
 
     const res = await fetch("/api/auth/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, redirectTo }),
     });
 
     setLoading(false);
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Error al enviar el código.");
+      setError(body.error ?? "Error al enviar el enlace.");
       return;
     }
 
-    setOtp("");
-    setSubstep("otp");
-  };
-
-  // ── Sub-paso 2: Verificar OTP ─────────────────────────────────
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    const res = await fetch("/api/auth/verify-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code: otp }),
-    });
-
-    setLoading(false);
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Código incorrecto.");
-      return;
-    }
-
-    setSubstep("profile");
+    setSubstep("awaiting");
   };
 
   const handleResend = async () => {
     setResending(true);
-    setOtp("");
     setError(null);
+
+    const tipo = isProvider ? "proveedor" : "cliente";
+    const nextUrl = `/auth/registro?tipo=${tipo}&verified=true`;
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
+
     await fetch("/api/auth/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, redirectTo }),
     });
     setResending(false);
   };
@@ -330,7 +326,7 @@ function RegistroForm() {
             </div>
           )}
 
-          <form onSubmit={handleSendOtp} className="flex flex-col gap-3.5">
+          <form onSubmit={handleSendLink} className="flex flex-col gap-3.5">
             <InputField
               icon={<Mail size={14} />}
               label="Correo electrónico"
@@ -347,7 +343,7 @@ function RegistroForm() {
               className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold mt-1 cursor-pointer border-none"
               style={submitBtnStyle}
             >
-              {loading ? "Enviando código..." : "Enviar código de verificación →"}
+              {loading ? "Enviando enlace..." : "Enviar enlace de verificación →"}
             </button>
           </form>
 
@@ -364,80 +360,54 @@ function RegistroForm() {
         </>
       )}
 
-      {/* ══ SUB-PASO 2: Código OTP ═════════════════════════════ */}
-      {substep === "otp" && (
+      {/* ══ SUB-PASO 2: Esperando clic en enlace ══════════════ */}
+      {substep === "awaiting" && (
         <>
           <BackButton to="email" />
 
           {isProvider && <WizardProgress current={1} />}
 
-          <div className="mb-7">
+          <div className="flex flex-col items-center text-center py-4">
             <div
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-3 text-[12px] font-semibold"
-              style={{ background: `${accent}1a`, color: accent }}
+              className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
+              style={{ background: `${accent}12`, border: `2px solid ${accent}25` }}
             >
-              {isProvider ? "Cuenta de proveedor · Paso 1 de 5" : "Cuenta de organizador"}
+              <MailOpen size={36} style={{ color: accent }} strokeWidth={1.5} />
             </div>
-            <h1 className="text-gray-900 text-[26px] font-black tracking-[-0.5px] mb-1.5">
-              Verifica tu correo
+
+            <h1 className="text-gray-900 text-[26px] font-black tracking-[-0.5px] mb-3">
+              Revisa tu correo
             </h1>
-            <p className="text-gray-500 text-[14px]">
-              Enviamos un código de 6 dígitos a{" "}
-              <span className="font-semibold text-gray-800">{email}</span>
+            <p className="text-gray-500 text-[14px] leading-[1.7] mb-2 max-w-[320px]">
+              Enviamos un enlace de confirmación a
             </p>
-          </div>
+            <p className="text-gray-900 font-bold text-[15px] mb-6">{email}</p>
 
-          {error && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[13px]">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
-            <div>
-              <label className="text-gray-700 text-[13px] font-semibold block mb-2">
-                Código de verificación
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                  setOtp(val);
-                }}
-                placeholder="000000"
-                autoFocus
-                className="w-full text-center rounded-xl border border-gray-200 outline-none transition-colors"
-                style={{
-                  fontSize: "32px",
-                  fontFamily: "monospace",
-                  letterSpacing: "14px",
-                  padding: "18px 12px",
-                  fontWeight: 800,
-                  color: "#111827",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = accent)}
-                onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
-              />
-              <p className="text-gray-400 text-[12px] mt-1.5 text-center">
-                Revisa también tu carpeta de spam
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || otp.length < 6}
-              className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold cursor-pointer border-none"
-              style={{ ...submitBtnStyle, opacity: loading || otp.length < 6 ? 0.6 : 1 }}
+            <div
+              className="w-full rounded-2xl px-5 py-4 mb-6 text-left"
+              style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
             >
-              {loading ? "Verificando..." : "Verificar correo →"}
-            </button>
-          </form>
+              {[
+                "Abre el correo que te enviamos",
+                "Haz clic en el botón «Confirmar correo»",
+                "Serás redirigido aquí automáticamente",
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-3 py-2.5 border-b border-gray-100 last:border-0">
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5"
+                    style={{ background: accent, color: "#fff" }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="text-gray-600 text-[13px]">{step}</span>
+                </div>
+              ))}
+            </div>
 
-          <div className="text-center mt-5">
-            <span className="text-gray-400 text-[13px]">¿No te llegó? </span>
+            <p className="text-gray-400 text-[12px] mb-4">
+              Revisa también tu carpeta de spam si no lo encuentras.
+            </p>
+
             <button
               type="button"
               onClick={handleResend}
@@ -445,7 +415,7 @@ function RegistroForm() {
               className="text-[13px] font-semibold cursor-pointer bg-transparent border-none"
               style={{ color: accent, opacity: resending ? 0.6 : 1 }}
             >
-              {resending ? "Enviando..." : "Reenviar código"}
+              {resending ? "Enviando..." : "¿No llegó? Reenviar enlace"}
             </button>
           </div>
         </>
@@ -454,7 +424,7 @@ function RegistroForm() {
       {/* ══ SUB-PASO 3: Nombre y contraseña ═══════════════════ */}
       {substep === "profile" && (
         <>
-          <BackButton to="otp" />
+          <BackButton to={null} />
 
           {isProvider && <WizardProgress current={1} />}
 
