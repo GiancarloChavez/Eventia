@@ -163,32 +163,24 @@ export default function HomePage() {
           <div className="w-px h-7" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.40), transparent)" }} />
         </div>
 
-        {/* Fade to white at the very bottom */}
+        {/* Fade to black at the very bottom */}
         <div
           className="absolute bottom-0 left-0 right-0 pointer-events-none z-20"
-          style={{ height: 140, background: "linear-gradient(to bottom, transparent 0%, #ffffff 100%)" }}
+          style={{ height: 140, background: "linear-gradient(to bottom, transparent 0%, #000000 100%)" }}
         />
       </section>
 
       {/* ═══════════════════════════════════════════════════
-          STATS — white strip, visual break between hero and photos
+          BRIDGE — dark engagement phrase between hero and split panels
       ═══════════════════════════════════════════════════ */}
-      <div style={{ background: "#fff", borderBottom: "1px solid #f3f4f6" }}>
-        <div className="max-w-[1100px] mx-auto px-8 py-12">
-          <p className="text-center text-[11px] font-bold tracking-[1.5px] uppercase mb-8" style={{ color: "#d1d5db" }}>
-            La plataforma de eventos sociales en Iquitos
-          </p>
-          <div className="grid grid-cols-4 gap-6">
-            {STATS.map(({ val, lbl }) => (
-              <div key={lbl} className="text-center">
-                <div className="font-black leading-none mb-1.5" style={{ fontSize: "clamp(28px, 3vw, 42px)", color: "#f59e0b" }}>
-                  {val}
-                </div>
-                <div className="text-[12px] tracking-[0.6px] uppercase font-semibold" style={{ color: "#9ca3af" }}>{lbl}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div style={{ background: "#000", padding: "52px 32px" }}>
+        <p
+          className="text-center font-black leading-[1.1] max-w-[700px] mx-auto"
+          style={{ fontSize: "clamp(22px, 3vw, 38px)", color: "rgba(255,255,255,0.90)", letterSpacing: "-1px" }}
+        >
+          Cada gran evento empieza con una{" "}
+          <span style={{ color: "#f59e0b" }}>buena decisión.</span>
+        </p>
       </div>
 
       {/* ═══════════════════════════════════════════════════
