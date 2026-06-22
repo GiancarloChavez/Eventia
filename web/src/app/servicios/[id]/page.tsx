@@ -80,6 +80,7 @@ export default function DetailPage() {
   const isVerified = service.provider?.status === "approved";
   const categoryLabel = service.category?.name ?? "";
   const providerName = service.provider?.business_name ?? "Proveedor";
+  const providerLogo = service.provider?.logo_url ?? null;
 
   if (showConfirm) {
     return (
@@ -187,8 +188,11 @@ export default function DetailPage() {
 
             {/* Provider card */}
             <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-4 mb-6">
-              <div className="w-11 h-11 rounded-full bg-[rgba(243,158,16,0.08)] flex items-center justify-center shrink-0">
-                <span className="text-[#f39e10] font-black text-[18px]">{providerName[0]}</span>
+              <div className="w-11 h-11 rounded-full shrink-0 overflow-hidden bg-[rgba(243,158,16,0.08)] flex items-center justify-center">
+                {providerLogo
+                  ? <img src={providerLogo} alt={providerName} className="w-full h-full object-cover" />
+                  : <span className="text-[#f39e10] font-black text-[18px]">{providerName[0]}</span>
+                }
               </div>
               <div className="flex-1">
                 <div className="text-gray-900 font-bold text-[14px]">{providerName}</div>

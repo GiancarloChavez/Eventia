@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Grid, FileText, Calendar, DollarSign, User,
-  MapPin, Clock, Package, X, Plus, ImageIcon, Save, Pencil,
+  MapPin, Clock, Package, X, Plus, ImageIcon, Save, Pencil, Camera,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
@@ -34,6 +34,7 @@ interface ProviderData {
   city:            string | null;
   status:          string;
   onboarding_step: number;
+  logo_url:        string | null;
 }
 
 interface ProfileData { full_name: string; email: string; }
@@ -100,7 +101,9 @@ export default function ProviderDashboard() {
   const [newPreviews,     setNewPreviews]     = useState<string[]>([]);
   const [saving,          setSaving]          = useState(false);
   const [saveError,       setSaveError]       = useState<string | null>(null);
+  const [logoUploading,   setLogoUploading]   = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // ── Load data ─────────────────────────────────────────────
 
@@ -134,7 +137,7 @@ export default function ProviderDashboard() {
       if (!session) { router.replace("/auth"); return; }
 
       const [{ data: prov }, { data: prof }] = await Promise.all([
-        supabase.from("providers").select("id,business_name,description,category_id,phone,city,status,onboarding_step").eq("user_id", session.user.id).single(),
+        supabase.from("providers").select("id,business_name,description,category_id,phone,city,status,onboarding_step,logo_url").eq("user_id", session.user.id).single(),
         supabase.from("profiles").select("full_name,email").eq("id", session.user.id).single(),
       ]);
 
@@ -253,6 +256,29 @@ export default function ProviderDashboard() {
     closeEdit();
   };
 
+  // ── Logo upload ───────────────────────────────────────────
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !provider) return;
+    setLogoUploading(true);
+    const supabase = getSupabase();
+    const ext  = file.name.split(".").pop() ?? "jpg";
+    const path = `logos/${provider.id}/logo.${ext}`;
+    const { data: uploaded } = await supabase.storage
+      .from("service-images")
+      .upload(path, file, { upsert: true });
+    if (uploaded) {
+      const { data: { publicUrl } } = supabase.storage
+        .from("service-images")
+        .getPublicUrl(uploaded.path);
+      await supabase.from("providers").update({ logo_url: publicUrl }).eq("id", provider.id);
+      setProvider((p) => p ? { ...p, logo_url: publicUrl } : p);
+    }
+    e.target.value = "";
+    setLogoUploading(false);
+  };
+
   // ── Render ────────────────────────────────────────────────
 
   if (!ready) {
@@ -291,12 +317,44 @@ export default function ProviderDashboard() {
       {/* Sidebar */}
       <aside className="w-[220px] shrink-0 bg-white border border-gray-200 rounded-2xl p-4 self-start sticky top-[88px]">
         <div className="flex flex-col items-center py-3 pb-5 border-b border-gray-100 mb-3">
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center mb-2.5 text-white font-black text-[20px]"
-            style={{ background: "linear-gradient(135deg, #f59e0b, #e88e00)" }}
+          {/* Clickable logo/avatar */}
+          <button
+            type="button"
+            onClick={() => logoInputRef.current?.click()}
+            className="relative w-14 h-14 rounded-full mb-2.5 group cursor-pointer border-none p-0 bg-transparent"
+            title="Cambiar logo del negocio"
           >
-            {initials}
-          </div>
+            {provider?.logo_url ? (
+              <img
+                src={provider.logo_url}
+                alt="Logo"
+                className="w-14 h-14 rounded-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center text-white font-black text-[20px]"
+                style={{ background: "linear-gradient(135deg, #f59e0b, #e88e00)" }}
+              >
+                {logoUploading
+                  ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : initials
+                }
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              {logoUploading
+                ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Camera size={16} color="#fff" />
+              }
+            </div>
+          </button>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            className="hidden"
+            onChange={handleLogoUpload}
+          />
           <div className="text-gray-900 font-bold text-[14px] text-center leading-tight">
             {provider?.business_name}
           </div>
@@ -396,7 +454,52 @@ export default function ProviderDashboard() {
         {active === "ingresos"    && <EmptyState icon={DollarSign} title="Sin ingresos registrados"    subtitle="Tus ganancias se mostrarán aquí una vez que completes tu primer servicio." />}
 
         {active === "perfil" && (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="flex flex-col gap-4">
+            {/* Logo card */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h3 className="text-gray-900 text-[15px] font-bold">Logo del negocio</h3>
+              </div>
+              <div className="px-6 py-5 flex items-center gap-5">
+                <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center">
+                  {provider?.logo_url ? (
+                    <img src={provider.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center text-white font-black text-[28px]"
+                      style={{ background: "linear-gradient(135deg, #f59e0b, #e88e00)" }}
+                    >
+                      {initials}
+                    </div>
+                  )}
+                  {logoUploading && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-gray-700 text-[13px] font-medium mb-1">
+                    {provider?.logo_url ? "Logo actual del negocio" : "Sin logo configurado"}
+                  </p>
+                  <p className="text-gray-400 text-[12px] mb-3">
+                    Se muestra en tu panel y en la vista de tus servicios. JPG, PNG o WebP · Máx. 5 MB.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={logoUploading}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors cursor-pointer bg-white"
+                  >
+                    <Camera size={13} />
+                    {provider?.logo_url ? "Cambiar logo" : "Subir logo"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Info card */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
               <h3 className="text-gray-900 text-[15px] font-bold">Información del negocio</h3>
             </div>
@@ -417,6 +520,7 @@ export default function ProviderDashboard() {
                 ) : null
               )}
             </div>
+          </div>
           </div>
         )}
       </div>

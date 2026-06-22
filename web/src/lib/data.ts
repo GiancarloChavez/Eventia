@@ -14,7 +14,7 @@ export interface DbService {
   category_id: number;
   status: string;
   category: { name: string; slug: string } | null;
-  provider: { business_name: string; status: string } | null;
+  provider: { business_name: string; status: string; logo_url: string | null } | null;
   images: { url: string; is_cover: boolean; display_order: number }[];
 }
 
@@ -30,7 +30,7 @@ export const SERVICE_SELECT = `
   category_id,
   status,
   category:service_categories(name, slug),
-  provider:providers(business_name, status),
+  provider:providers(business_name, status, logo_url),
   images:service_images(url, is_cover, display_order)
 ` as const;
 
