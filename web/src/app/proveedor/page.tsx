@@ -1,41 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Grid, FileText, Calendar, DollarSign, User,
-  MapPin, AlertCircle, Clock, Package, Plus, Phone,
+  MapPin, Clock, Package, X, Plus, ImageIcon, Save, Pencil,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
 // ── Types ────────────────────────────────────────────────────
 
-interface ProviderData {
-  id:            string;
-  business_name: string;
-  description:   string | null;
-  category_id:   number | null;
-  phone:         string | null;
-  city:          string | null;
-  status:        string;
-  onboarding_step: number;
-}
+interface ServiceImage { id: string; url: string; display_order: number; }
 
 interface ServiceData {
   id:           string;
   title:        string;
+  description:  string | null;
   pricing_type: string;
   base_price:   number | null;
   status:       string;
   location:     string | null;
   event_types:  string[];
   created_at:   string;
+  images:       ServiceImage[];
 }
 
-interface ProfileData {
-  full_name: string;
-  email:     string;
+interface ProviderData {
+  id:              string;
+  business_name:   string;
+  description:     string | null;
+  category_id:     number | null;
+  phone:           string | null;
+  city:            string | null;
+  status:          string;
+  onboarding_step: number;
 }
+
+interface ProfileData { full_name: string; email: string; }
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -47,11 +48,11 @@ const CATEGORY_LABELS: Record<number, string> = {
 };
 
 const SIDEBAR_ITEMS = [
-  { id: "servicios",   label: "Mis servicios", Icon: Grid     },
-  { id: "solicitudes", label: "Solicitudes",   Icon: FileText },
-  { id: "contratos",   label: "Contratos",     Icon: Calendar },
-  { id: "ingresos",    label: "Ingresos",      Icon: DollarSign },
-  { id: "perfil",      label: "Perfil",        Icon: User     },
+  { id: "servicios",   label: "Mis servicios", Icon: Grid        },
+  { id: "solicitudes", label: "Solicitudes",   Icon: FileText    },
+  { id: "contratos",   label: "Contratos",     Icon: Calendar    },
+  { id: "ingresos",    label: "Ingresos",      Icon: DollarSign  },
+  { id: "perfil",      label: "Perfil",        Icon: User        },
 ];
 
 const TITLES: Record<string, string> = {
@@ -80,17 +81,56 @@ function EmptyState({ icon: Icon, title, subtitle }: { icon: React.ElementType; 
 
 export default function ProviderDashboard() {
   const router = useRouter();
-  const [active,    setActive]    = useState("servicios");
-  const [ready,     setReady]     = useState(false);
-  const [provider,  setProvider]  = useState<ProviderData | null>(null);
-  const [profile,   setProfile]   = useState<ProfileData | null>(null);
-  const [services,  setServices]  = useState<ServiceData[]>([]);
+  const [active,   setActive]   = useState("servicios");
+  const [ready,    setReady]    = useState(false);
+  const [provider, setProvider] = useState<ProviderData | null>(null);
+  const [profile,  setProfile]  = useState<ProfileData | null>(null);
+  const [services, setServices] = useState<ServiceData[]>([]);
+
+  // ── Edit state ────────────────────────────────────────────
+  const [editing,         setEditing]         = useState<ServiceData | null>(null);
+  const [editTitle,       setEditTitle]       = useState("");
+  const [editDesc,        setEditDesc]        = useState("");
+  const [editPricingType, setEditPricingType] = useState<"fixed"|"quote">("fixed");
+  const [editPrice,       setEditPrice]       = useState("");
+  const [editLocation,    setEditLocation]    = useState("");
+  const [editImages,      setEditImages]      = useState<ServiceImage[]>([]);
+  const [removedIds,      setRemovedIds]      = useState<string[]>([]);
+  const [newPhotos,       setNewPhotos]       = useState<File[]>([]);
+  const [newPreviews,     setNewPreviews]     = useState<string[]>([]);
+  const [saving,          setSaving]          = useState(false);
+  const [saveError,       setSaveError]       = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Load data ─────────────────────────────────────────────
+
+  const loadServices = async (providerId: string) => {
+    const supabase = getSupabase();
+    const { data: svcs } = await supabase
+      .from("services")
+      .select("id,title,description,pricing_type,base_price,status,location,event_types,created_at")
+      .eq("provider_id", providerId)
+      .order("created_at", { ascending: false });
+
+    if (!svcs) { setServices([]); return; }
+
+    const withImages = await Promise.all(
+      svcs.map(async (svc) => {
+        const { data: imgs } = await supabase
+          .from("service_images")
+          .select("id,url,display_order")
+          .eq("service_id", svc.id)
+          .order("display_order");
+        return { ...svc, images: imgs ?? [] };
+      })
+    );
+    setServices(withImages);
+  };
 
   useEffect(() => {
     const load = async () => {
       const supabase = getSupabase();
       const { data: { session } } = await supabase.auth.getSession();
-
       if (!session) { router.replace("/auth"); return; }
 
       const [{ data: prov }, { data: prof }] = await Promise.all([
@@ -100,7 +140,6 @@ export default function ProviderDashboard() {
 
       if (!prov) { router.replace("/auth/registro?tipo=proveedor"); return; }
 
-      // Redirect to pending onboarding step
       if (prov.status === "draft" && prov.onboarding_step < 5) {
         const stepRoutes: Record<number, string> = {
           1: "/proveedor/onboarding/negocio",
@@ -112,19 +151,109 @@ export default function ProviderDashboard() {
         return;
       }
 
-      const { data: svcs } = await supabase
-        .from("services")
-        .select("id,title,pricing_type,base_price,status,location,event_types,created_at")
-        .eq("provider_id", prov.id)
-        .order("created_at", { ascending: false });
-
       setProvider(prov);
       setProfile(prof);
-      setServices(svcs ?? []);
+      await loadServices(prov.id);
       setReady(true);
     };
     load();
   }, [router]);
+
+  // ── Edit handlers ─────────────────────────────────────────
+
+  const openEdit = (svc: ServiceData) => {
+    setEditing(svc);
+    setEditTitle(svc.title);
+    setEditDesc(svc.description ?? "");
+    setEditPricingType(svc.pricing_type as "fixed"|"quote");
+    setEditPrice(svc.base_price != null ? String(svc.base_price) : "");
+    setEditLocation(svc.location ?? "");
+    setEditImages([...svc.images]);
+    setRemovedIds([]);
+    setNewPhotos([]);
+    setNewPreviews([]);
+    setSaveError(null);
+  };
+
+  const closeEdit = () => {
+    newPreviews.forEach((url) => URL.revokeObjectURL(url));
+    setEditing(null);
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setNewPhotos((p) => [...p, ...files]);
+    setNewPreviews((p) => [...p, ...files.map((f) => URL.createObjectURL(f))]);
+    e.target.value = "";
+  };
+
+  const removeExisting = (id: string) => {
+    setEditImages((p) => p.filter((img) => img.id !== id));
+    setRemovedIds((p) => [...p, id]);
+  };
+
+  const removeNew = (i: number) => {
+    URL.revokeObjectURL(newPreviews[i]);
+    setNewPhotos((p) => p.filter((_, j) => j !== i));
+    setNewPreviews((p) => p.filter((_, j) => j !== i));
+  };
+
+  const handleSave = async () => {
+    if (!editing || !provider) return;
+    setSaveError(null);
+    setSaving(true);
+
+    const supabase = getSupabase();
+
+    const { error: updateErr } = await supabase
+      .from("services")
+      .update({
+        title:        editTitle,
+        description:  editDesc || null,
+        pricing_type: editPricingType,
+        base_price:   editPricingType === "fixed" && editPrice ? parseFloat(editPrice) : null,
+        location:     editLocation || null,
+      })
+      .eq("id", editing.id);
+
+    if (updateErr) { setSaveError(updateErr.message); setSaving(false); return; }
+
+    // Borrar imágenes eliminadas
+    if (removedIds.length > 0) {
+      await supabase.from("service_images").delete().in("id", removedIds);
+    }
+
+    // Subir fotos nuevas
+    if (newPhotos.length > 0) {
+      const baseOrder = editImages.length;
+      for (let i = 0; i < newPhotos.length; i++) {
+        const file = newPhotos[i];
+        const ext  = file.name.split(".").pop() ?? "jpg";
+        const path = `${provider.id}/${editing.id}/${Date.now()}_${i}.${ext}`;
+        const { data: uploaded } = await supabase.storage
+          .from("service-images")
+          .upload(path, file, { upsert: true });
+        if (uploaded) {
+          const { data: { publicUrl } } = supabase.storage
+            .from("service-images")
+            .getPublicUrl(uploaded.path);
+          await supabase.from("service_images").insert({
+            service_id:    editing.id,
+            url:           publicUrl,
+            display_order: baseOrder + i,
+            is_cover:      baseOrder + i === 0,
+          });
+        }
+      }
+    }
+
+    await loadServices(provider.id);
+    setSaving(false);
+    closeEdit();
+  };
+
+  // ── Render ────────────────────────────────────────────────
 
   if (!ready) {
     return (
@@ -175,7 +304,6 @@ export default function ProviderDashboard() {
             <div className="text-gray-400 text-[12px] mt-0.5 text-center">{categoryLabel}</div>
           )}
         </div>
-
         <nav className="flex flex-col gap-0.5">
           {SIDEBAR_ITEMS.map(({ id, label, Icon }) => {
             const isActive = active === id;
@@ -185,10 +313,10 @@ export default function ProviderDashboard() {
                 onClick={() => setActive(id)}
                 className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[14px] text-left transition-all border cursor-pointer"
                 style={{
-                  background:   isActive ? "rgba(243,158,16,0.08)" : "none",
-                  borderColor:  isActive ? "rgba(243,158,16,0.22)" : "transparent",
-                  color:        isActive ? "#f39e10" : "#6b7280",
-                  fontWeight:   isActive ? 600 : 400,
+                  background:  isActive ? "rgba(243,158,16,0.08)" : "none",
+                  borderColor: isActive ? "rgba(243,158,16,0.22)" : "transparent",
+                  color:       isActive ? "#f39e10" : "#6b7280",
+                  fontWeight:  isActive ? 600 : 400,
                 }}
               >
                 <Icon size={16} style={{ color: isActive ? "#f39e10" : "#9ca3af" }} strokeWidth={1.8} />
@@ -206,83 +334,67 @@ export default function ProviderDashboard() {
           <p className="text-gray-400 text-[13px]">{provider?.business_name}</p>
         </div>
 
-        {/* ── Mis servicios ── */}
+        {/* Mis servicios */}
         {active === "servicios" && (
-          <div>
-            {services.length === 0 ? (
-              <EmptyState
-                icon={Package}
-                title="Sin servicios aún"
-                subtitle="Agrega tu primer servicio para aparecer en el catálogo."
-              />
-            ) : (
+          services.length === 0
+            ? <EmptyState icon={Package} title="Sin servicios aún" subtitle="Agrega tu primer servicio para aparecer en el catálogo." />
+            : (
               <div className="flex flex-col gap-3">
                 {services.map((svc) => (
-                  <div
-                    key={svc.id}
-                    className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-gray-900 font-bold text-[15px] mb-0.5 truncate">{svc.title}</div>
-                      <div className="flex items-center gap-3 text-gray-400 text-[12px] flex-wrap">
-                        {svc.location && (
-                          <span className="flex items-center gap-1"><MapPin size={11} />{svc.location}</span>
-                        )}
-                        {svc.event_types?.length > 0 && (
-                          <span>{svc.event_types.join(", ")}</span>
-                        )}
+                  <div key={svc.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    {/* Cover photo */}
+                    {svc.images.length > 0 && (
+                      <div className="h-[180px] w-full overflow-hidden">
+                        <img
+                          src={svc.images[0].url}
+                          alt={svc.title}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      {svc.pricing_type === "fixed" && svc.base_price != null ? (
-                        <div className="text-[#f39e10] font-black text-[16px]">
-                          S/ {svc.base_price.toLocaleString("es-PE")}
+                    )}
+                    <div className="px-5 py-4 flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-gray-900 font-bold text-[15px] mb-0.5 truncate">{svc.title}</div>
+                        <div className="flex items-center gap-3 text-gray-400 text-[12px] flex-wrap">
+                          {svc.location && (
+                            <span className="flex items-center gap-1"><MapPin size={11} />{svc.location}</span>
+                          )}
+                          {svc.images.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <ImageIcon size={11} />{svc.images.length} foto{svc.images.length !== 1 ? "s" : ""}
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <div className="text-gray-400 text-[13px] italic">Cotización</div>
-                      )}
-                      <div
-                        className="text-[11px] font-semibold mt-0.5"
-                        style={{ color: svc.status === "active" ? "#16a34a" : "#9ca3af" }}
-                      >
-                        {svc.status === "active" ? "Activo" : "Inactivo"}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          {svc.pricing_type === "fixed" && svc.base_price != null
+                            ? <div className="text-[#f39e10] font-black text-[16px]">S/ {svc.base_price.toLocaleString("es-PE")}</div>
+                            : <div className="text-gray-400 text-[13px] italic">Cotización</div>
+                          }
+                          <div className="text-[11px] font-semibold mt-0.5" style={{ color: svc.status === "active" ? "#16a34a" : "#9ca3af" }}>
+                            {svc.status === "active" ? "Activo" : "Inactivo"}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => openEdit(svc)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-gray-600 text-[13px] font-medium hover:bg-gray-50 transition-colors cursor-pointer bg-white"
+                        >
+                          <Pencil size={13} />
+                          Editar
+                        </button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            )
         )}
 
-        {/* ── Solicitudes ── */}
-        {active === "solicitudes" && (
-          <EmptyState
-            icon={FileText}
-            title="Sin solicitudes aún"
-            subtitle="Cuando un cliente reserve tu servicio, aparecerá aquí."
-          />
-        )}
+        {active === "solicitudes" && <EmptyState icon={FileText}   title="Sin solicitudes aún"         subtitle="Cuando un cliente reserve tu servicio, aparecerá aquí." />}
+        {active === "contratos"   && <EmptyState icon={Calendar}   title="Sin contratos aún"           subtitle="Los contratos generados por reservas confirmadas aparecerán aquí." />}
+        {active === "ingresos"    && <EmptyState icon={DollarSign} title="Sin ingresos registrados"    subtitle="Tus ganancias se mostrarán aquí una vez que completes tu primer servicio." />}
 
-        {/* ── Contratos ── */}
-        {active === "contratos" && (
-          <EmptyState
-            icon={Calendar}
-            title="Sin contratos aún"
-            subtitle="Los contratos generados por reservas confirmadas aparecerán aquí."
-          />
-        )}
-
-        {/* ── Ingresos ── */}
-        {active === "ingresos" && (
-          <EmptyState
-            icon={DollarSign}
-            title="Sin ingresos registrados"
-            subtitle="Tus ganancias se mostrarán aquí una vez que completes tu primer servicio."
-          />
-        )}
-
-        {/* ── Perfil ── */}
         {active === "perfil" && (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
@@ -290,12 +402,12 @@ export default function ProviderDashboard() {
             </div>
             <div className="px-6 py-5 flex flex-col gap-4">
               {[
-                { label: "Nombre del negocio", value: provider?.business_name },
-                { label: "Categoría",          value: categoryLabel },
-                { label: "Ciudad",             value: provider?.city },
-                { label: "Teléfono",           value: provider?.phone },
-                { label: "Descripción",        value: provider?.description },
-                { label: "Correo de contacto", value: profile?.email },
+                { label: "Nombre del negocio",  value: provider?.business_name },
+                { label: "Categoría",           value: categoryLabel },
+                { label: "Ciudad",              value: provider?.city },
+                { label: "Teléfono",            value: provider?.phone },
+                { label: "Descripción",         value: provider?.description },
+                { label: "Correo de contacto",  value: profile?.email },
               ].map(({ label, value }) =>
                 value ? (
                   <div key={label}>
@@ -308,6 +420,190 @@ export default function ProviderDashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Edit slide-over ───────────────────────────────── */}
+      {editing && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/30 z-[400]"
+            onClick={closeEdit}
+          />
+
+          {/* Panel */}
+          <div
+            className="fixed right-0 top-0 bottom-0 w-full max-w-[480px] bg-white z-[401] flex flex-col shadow-2xl"
+            style={{ borderLeft: "1px solid #e5e7eb" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+              <h2 className="text-gray-900 text-[17px] font-black">Editar servicio</h2>
+              <button onClick={closeEdit} className="p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer border-none bg-transparent">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+
+              {saveError && (
+                <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[13px]">
+                  {saveError}
+                </div>
+              )}
+
+              {/* Título */}
+              <div>
+                <label className="text-gray-700 text-[13px] font-semibold block mb-1.5">Nombre del servicio</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-[14px] outline-none"
+                  style={{ fontFamily: "inherit" }}
+                  onFocus={(e) => (e.target.style.borderColor = "#f39e10")}
+                  onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+
+              {/* Descripción */}
+              <div>
+                <label className="text-gray-700 text-[13px] font-semibold block mb-1.5">Descripción</label>
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  rows={3}
+                  className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-[14px] outline-none resize-none"
+                  style={{ fontFamily: "inherit" }}
+                  onFocus={(e) => (e.target.style.borderColor = "#f39e10")}
+                  onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+
+              {/* Precio */}
+              <div>
+                <label className="text-gray-700 text-[13px] font-semibold block mb-2">Tipo de precio</label>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {(["fixed","quote"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setEditPricingType(t)}
+                      className="py-2.5 rounded-xl border-2 text-[13px] font-semibold cursor-pointer transition-all"
+                      style={{
+                        borderColor: editPricingType === t ? "#f39e10" : "#e5e7eb",
+                        background:  editPricingType === t ? "rgba(243,158,16,0.06)" : "#fff",
+                        color:       editPricingType === t ? "#92400e" : "#6b7280",
+                      }}
+                    >
+                      {t === "fixed" ? "Precio fijo" : "Cotización"}
+                    </button>
+                  ))}
+                </div>
+                {editPricingType === "fixed" && (
+                  <input
+                    type="number"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    placeholder="Precio en S/"
+                    className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-[14px] outline-none"
+                    style={{ fontFamily: "inherit" }}
+                    onFocus={(e) => (e.target.style.borderColor = "#f39e10")}
+                    onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
+                  />
+                )}
+              </div>
+
+              {/* Ubicación */}
+              <div>
+                <label className="text-gray-700 text-[13px] font-semibold block mb-1.5">Ubicación / Cobertura</label>
+                <input
+                  type="text"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-[14px] outline-none"
+                  style={{ fontFamily: "inherit" }}
+                  onFocus={(e) => (e.target.style.borderColor = "#f39e10")}
+                  onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+
+              {/* Fotografías */}
+              <div>
+                <label className="text-gray-700 text-[13px] font-semibold block mb-2">
+                  <span className="flex items-center gap-1.5">
+                    <ImageIcon size={13} className="text-gray-400" />
+                    Fotografías
+                  </span>
+                </label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {editImages.map((img) => (
+                    <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200">
+                      <img src={img.url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeExisting(img.id)}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center cursor-pointer border-none"
+                      >
+                        <X size={12} color="#fff" />
+                      </button>
+                    </div>
+                  ))}
+                  {newPreviews.map((url, i) => (
+                    <div key={url} className="relative aspect-square rounded-xl overflow-hidden border border-[#f39e10]">
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeNew(i)}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center cursor-pointer border-none"
+                      >
+                        <X size={12} color="#fff" />
+                      </button>
+                    </div>
+                  ))}
+                  {editImages.length + newPhotos.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-[#f39e10] transition-all bg-transparent"
+                    >
+                      <Plus size={20} className="text-gray-400" />
+                      <span className="text-gray-400 text-[11px]">Agregar</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  multiple
+                  className="hidden"
+                  onChange={handlePhotoSelect}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold cursor-pointer border-none flex items-center justify-center gap-2"
+                style={{
+                  background: "linear-gradient(135deg, #f59e0b 0%, #f39e10 55%, #e88e00 100%)",
+                  boxShadow:  "0 4px 20px rgba(243,158,16,0.4)",
+                  opacity: saving ? 0.75 : 1,
+                }}
+              >
+                {saving
+                  ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Guardando...</>
+                  : <><Save size={16} />Guardar cambios</>
+                }
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

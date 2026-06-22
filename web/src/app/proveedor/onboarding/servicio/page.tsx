@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileText, DollarSign, Users, CalendarDays, MapPin, ChevronLeft, Check,
-  Camera, Music2, Sparkles, Clock, Package,
+  Camera, Music2, Sparkles, Clock, Package, ImageIcon, X, Plus,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
@@ -255,6 +255,12 @@ export default function ServicioPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [serviceId,  setServiceId]  = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photos,          setPhotos]          = useState<File[]>([]);
+  const [photoPreviews,   setPhotoPreviews]   = useState<string[]>([]);
+  const [existingImages,  setExistingImages]  = useState<{ id: string; url: string }[]>([]);
+  const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
+
   const [form, setForm] = useState({
     // ── Common ──
     title:       "",
@@ -299,6 +305,27 @@ export default function ServicioPage() {
           : [...(f[k] as string[]), val],
       }));
 
+  // ── Photo handlers ───────────────────────────────────────
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setPhotos((p) => [...p, ...files]);
+    setPhotoPreviews((p) => [...p, ...files.map((f) => URL.createObjectURL(f))]);
+    e.target.value = "";
+  };
+
+  const removeNewPhoto = (i: number) => {
+    URL.revokeObjectURL(photoPreviews[i]);
+    setPhotos((p) => p.filter((_, j) => j !== i));
+    setPhotoPreviews((p) => p.filter((_, j) => j !== i));
+  };
+
+  const removeExistingImage = (id: string) => {
+    setExistingImages((p) => p.filter((img) => img.id !== id));
+    setRemovedImageIds((p) => [...p, id]);
+  };
+
   // ── Pre-fill ─────────────────────────────────────────────
 
   useEffect(() => {
@@ -334,6 +361,14 @@ export default function ServicioPage() {
 
       if (service) {
         setServiceId(service.id);
+
+        const { data: imgs } = await supabase
+          .from("service_images")
+          .select("id, url")
+          .eq("service_id", service.id)
+          .order("display_order");
+        if (imgs) setExistingImages(imgs);
+
         setForm({
           title:       service.title       ?? "",
           description: service.description ?? "",
@@ -371,6 +406,10 @@ export default function ServicioPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (categoryId === 1 && existingImages.length === 0 && photos.length === 0) {
+      setError("Agrega al menos una foto del local para continuar.");
+      return;
+    }
     if (form.eventTypes.length === 0) {
       setError("Selecciona al menos un tipo de evento.");
       return;
@@ -431,13 +470,50 @@ export default function ServicioPage() {
     };
 
     let dbError;
+    let currentServiceId = serviceId;
+
     if (serviceId) {
       ({ error: dbError } = await supabase.from("services").update(payload).eq("id", serviceId));
     } else {
-      ({ error: dbError } = await supabase.from("services").insert(payload));
+      const { data: inserted, error: insertError } = await supabase
+        .from("services")
+        .insert(payload)
+        .select("id")
+        .single();
+      dbError = insertError;
+      currentServiceId = inserted?.id ?? null;
     }
 
     if (dbError) { setError(dbError.message); setLoading(false); return; }
+
+    // Borrar imágenes eliminadas
+    if (removedImageIds.length > 0) {
+      await supabase.from("service_images").delete().in("id", removedImageIds);
+    }
+
+    // Subir fotos nuevas
+    if (currentServiceId && photos.length > 0) {
+      const baseOrder = existingImages.length;
+      for (let i = 0; i < photos.length; i++) {
+        const file  = photos[i];
+        const ext   = file.name.split(".").pop() ?? "jpg";
+        const path  = `${providerId}/${currentServiceId}/${Date.now()}_${i}.${ext}`;
+        const { data: uploaded } = await supabase.storage
+          .from("service-images")
+          .upload(path, file, { upsert: true });
+        if (uploaded) {
+          const { data: { publicUrl } } = supabase.storage
+            .from("service-images")
+            .getPublicUrl(uploaded.path);
+          await supabase.from("service_images").insert({
+            service_id:    currentServiceId,
+            url:           publicUrl,
+            display_order: baseOrder + i,
+            is_cover:      baseOrder + i === 0,
+          });
+        }
+      }
+    }
 
     await supabase.from("providers").update({ onboarding_step: 3 }).eq("id", providerId);
 
@@ -912,6 +988,73 @@ export default function ServicioPage() {
               value={form.customDesign}
               onChange={(v) => setForm((f) => ({ ...f, customDesign: v }))}
             />
+          </>
+        )}
+
+        {/* ── Fotos del local (Cat 1 obligatorio) ── */}
+        {categoryId === 1 && (
+          <>
+            <SectionDivider label="Fotografías del local" />
+            <div>
+              <label className="text-gray-700 text-[13px] font-semibold block mb-2">
+                <span className="flex items-center gap-1.5">
+                  <ImageIcon size={13} className="text-gray-400" />
+                  Fotos del local <span className="text-red-400">*</span>
+                  <span className="text-gray-400 text-[11px] font-normal">(mín. 1 foto · máx. 5 MB c/u)</span>
+                </span>
+              </label>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                {/* Imágenes ya guardadas */}
+                {existingImages.map((img) => (
+                  <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200">
+                    <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeExistingImage(img.id)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center cursor-pointer border-none"
+                    >
+                      <X size={12} color="#fff" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Previews de fotos nuevas */}
+                {photoPreviews.map((url, i) => (
+                  <div key={url} className="relative aspect-square rounded-xl overflow-hidden border border-[#f39e10]">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeNewPhoto(i)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center cursor-pointer border-none"
+                    >
+                      <X size={12} color="#fff" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Botón agregar */}
+                {existingImages.length + photos.length < 8 && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-[#f39e10] hover:bg-[rgba(243,158,16,0.04)] transition-all bg-transparent"
+                  >
+                    <Plus size={20} className="text-gray-400" />
+                    <span className="text-gray-400 text-[11px]">Agregar</span>
+                  </button>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                multiple
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
+            </div>
           </>
         )}
 
