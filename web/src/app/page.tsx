@@ -103,7 +103,7 @@ export default function HomePage() {
         {/* CTAs */}
         <div className="flex gap-3 flex-wrap justify-center">
           <Link
-            href="/catalogo"
+            href="/catalogo?category=local"
             className="flex items-center gap-2.5 rounded-full font-bold text-white"
             style={{
               padding: "15px 36px",
