@@ -78,15 +78,6 @@ export default function HomePage() {
           paddingRight: 24,
         }}
       >
-        {/* Pill label */}
-        <div
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8 text-[12px] font-bold tracking-[0.8px] uppercase"
-          style={{ background: "rgba(243,158,16,0.18)", border: "1px solid rgba(243,158,16,0.40)", color: "#fde68a" }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#fbbf24]" />
-          Iquitos · Perú
-        </div>
-
         {/* Headline */}
         <h1
           className="text-white font-black text-center leading-[1.02] mb-6 max-w-[820px]"
@@ -106,7 +97,7 @@ export default function HomePage() {
           style={{ fontSize: "clamp(15px, 1.6vw, 18px)" }}
         >
           Encuentra, compara y contrata los mejores proveedores de eventos
-          para tu quinceaños, boda o graduación — todo verificado.
+          para tu quinceaños, boda o graduación.
         </p>
 
         {/* CTAs */}
