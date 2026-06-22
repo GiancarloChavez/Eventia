@@ -69,7 +69,7 @@ export default function HomePage() {
         className="relative flex flex-col items-center justify-center text-center"
         style={{
           minHeight: "100svh",
-          backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.28) 50%, rgba(0,0,0,0.68) 100%), url('/hero.jpg')`,
+          backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0.72) 80%, rgba(0,0,0,0.96) 100%), url('/hero.jpg')`,
           backgroundSize: "cover",
           backgroundPosition: "center 30%",
           paddingTop: 110,
@@ -156,13 +156,40 @@ export default function HomePage() {
 
         {/* Scroll indicator */}
         <div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5"
-          style={{ color: "rgba(255,255,255,0.35)" }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 z-10"
+          style={{ color: "rgba(255,255,255,0.40)" }}
         >
           <span className="text-[11px] tracking-[1.5px] uppercase">Descubre</span>
-          <div className="w-px h-8" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.35), transparent)" }} />
+          <div className="w-px h-7" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.40), transparent)" }} />
         </div>
+
+        {/* Fade to white at the very bottom */}
+        <div
+          className="absolute bottom-0 left-0 right-0 pointer-events-none z-20"
+          style={{ height: 140, background: "linear-gradient(to bottom, transparent 0%, #ffffff 100%)" }}
+        />
       </section>
+
+      {/* ═══════════════════════════════════════════════════
+          STATS — white strip, visual break between hero and photos
+      ═══════════════════════════════════════════════════ */}
+      <div style={{ background: "#fff", borderBottom: "1px solid #f3f4f6" }}>
+        <div className="max-w-[1100px] mx-auto px-8 py-12">
+          <p className="text-center text-[11px] font-bold tracking-[1.5px] uppercase mb-8" style={{ color: "#d1d5db" }}>
+            La plataforma de eventos sociales en Iquitos
+          </p>
+          <div className="grid grid-cols-4 gap-6">
+            {STATS.map(({ val, lbl }) => (
+              <div key={lbl} className="text-center">
+                <div className="font-black leading-none mb-1.5" style={{ fontSize: "clamp(28px, 3vw, 42px)", color: "#f59e0b" }}>
+                  {val}
+                </div>
+                <div className="text-[12px] tracking-[0.6px] uppercase font-semibold" style={{ color: "#9ca3af" }}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* ═══════════════════════════════════════════════════
           SPLIT PATH — two immersive panels
@@ -264,22 +291,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ═══════════════════════════════════════════════════
-          STATS STRIP
-      ═══════════════════════════════════════════════════ */}
-      <div style={{ background: "#0f0a02", borderTop: "1px solid rgba(243,158,16,0.12)" }}>
-        <div className="max-w-[1100px] mx-auto px-8 py-10 grid grid-cols-4 gap-6">
-          {STATS.map(({ val, lbl }) => (
-            <div key={lbl} className="text-center">
-              <div className="font-black leading-none mb-1.5" style={{ fontSize: "clamp(28px, 3vw, 42px)", color: "#f59e0b" }}>
-                {val}
-              </div>
-              <div className="text-white/40 text-[12px] tracking-[0.6px] uppercase font-semibold">{lbl}</div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* ═══════════════════════════════════════════════════
           CATEGORÍAS — photo grid cards
