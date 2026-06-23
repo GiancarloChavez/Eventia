@@ -10,7 +10,7 @@ const admin = () =>
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-// GET /api/provider/bookings — returns all booking requests for the logged-in provider
+// GET /api/provider/bookings
 export async function GET() {
   const cookieStore = await cookies();
   const supabase = createSupabaseServer(cookieStore);
@@ -19,34 +19,67 @@ export async function GET() {
 
   const db = admin();
 
-  const { data: provider } = await db
+  // 1. Find provider record for this user
+  const { data: provider, error: provErr } = await db
     .from("providers")
     .select("id")
     .eq("user_id", user.id)
     .single();
-  if (!provider) return NextResponse.json({ error: "No es proveedor" }, { status: 403 });
+  if (provErr || !provider) return NextResponse.json({ error: "No es proveedor" }, { status: 403 });
 
+  // 2. Get all services for this provider
   const { data: services } = await db
     .from("services")
-    .select("id")
+    .select("id, title")
     .eq("provider_id", provider.id);
-  const serviceIds = (services ?? []).map((s: { id: string }) => s.id);
 
+  const serviceIds = (services ?? []).map((s: { id: string }) => s.id);
   if (serviceIds.length === 0) return NextResponse.json({ bookings: [] });
 
-  const { data: bookings, error } = await db
+  const serviceTitleMap: Record<string, string> = {};
+  (services ?? []).forEach((s: { id: string; title: string }) => {
+    serviceTitleMap[s.id] = s.title;
+  });
+
+  // 3. Get bookings — no nested joins to avoid PostgREST FK ambiguity
+  const { data: bookings, error: bookErr } = await db
     .from("bookings")
-    .select(`
-      id, event_date, status, quoted_price, created_at, notes,
-      services ( title ),
-      profiles ( full_name, phone )
-    `)
+    .select("id, event_date, status, quoted_price, created_at, notes, client_id, service_id")
     .in("service_id", serviceIds)
     .order("created_at", { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (bookErr) return NextResponse.json({ error: bookErr.message }, { status: 500 });
+  if (!bookings || bookings.length === 0) return NextResponse.json({ bookings: [] });
 
-  return NextResponse.json({ bookings: bookings ?? [] });
+  // 4. Fetch profiles for each unique client_id separately
+  const clientIds = [...new Set(bookings.map((b: { client_id: string }) => b.client_id))];
+  const { data: profiles } = await db
+    .from("profiles")
+    .select("id, full_name, phone")
+    .in("id", clientIds);
+
+  const profileMap: Record<string, { full_name: string | null; phone: string | null }> = {};
+  (profiles ?? []).forEach((p: { id: string; full_name: string | null; phone: string | null }) => {
+    profileMap[p.id] = { full_name: p.full_name, phone: p.phone };
+  });
+
+  // 5. Merge and return in the shape the frontend expects
+  const result = bookings.map((b: {
+    id: string; event_date: string; status: string;
+    quoted_price: number | null; created_at: string;
+    notes: string | null; client_id: string; service_id: string;
+  }) => ({
+    id:           b.id,
+    event_date:   b.event_date,
+    status:       b.status,
+    quoted_price: b.quoted_price,
+    created_at:   b.created_at,
+    notes:        b.notes,
+    services:     { title: serviceTitleMap[b.service_id] ?? null },
+    profiles:     profileMap[b.client_id] ?? { full_name: null, phone: null },
+  }));
+
+  return NextResponse.json({ bookings: result });
 }
 
 // PATCH /api/provider/bookings — update booking status (confirm / cancel)
@@ -63,17 +96,30 @@ export async function PATCH(request: NextRequest) {
 
   const db = admin();
 
-  // Verify this booking belongs to one of the provider's services
+  // Verify ownership: booking → service → provider → user
   const { data: booking } = await db
     .from("bookings")
-    .select("service_id, services ( provider_id, providers ( user_id ) )")
+    .select("service_id")
     .eq("id", id)
     .single();
 
-  const providerUserId =
-    (booking?.services as { providers?: { user_id: string } } | null)?.providers?.user_id;
+  if (!booking) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
 
-  if (providerUserId !== user.id) {
+  const { data: service } = await db
+    .from("services")
+    .select("provider_id")
+    .eq("id", booking.service_id)
+    .single();
+
+  if (!service) return NextResponse.json({ error: "Servicio no encontrado" }, { status: 404 });
+
+  const { data: provider } = await db
+    .from("providers")
+    .select("user_id")
+    .eq("id", service.provider_id)
+    .single();
+
+  if (!provider || provider.user_id !== user.id) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
