@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Calendar, FileText, CreditCard, User } from "lucide-react";
+import { Calendar, FileText, CreditCard, User, Info } from "lucide-react";
 import { formatPrice } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
 
@@ -172,6 +172,23 @@ export default function ClientDashboard() {
               ))}
             </div>
 
+            {/* Payment notice — shown when there are pending bookings */}
+            {pendingCount > 0 && (
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5 mb-4">
+                <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-amber-800 text-[13px] font-semibold leading-snug">
+                    {pendingCount === 1
+                      ? "Tienes 1 reserva pendiente de confirmación"
+                      : `Tienes ${pendingCount} reservas pendientes de confirmación`}
+                  </p>
+                  <p className="text-amber-700 text-[12px] mt-0.5 leading-relaxed">
+                    El pago se solicitará únicamente cuando el proveedor acepte tu solicitud. No se realizará ningún cargo hasta entonces.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                 <h3 className="text-gray-900 text-[16px] font-bold">Historial de reservas</h3>
@@ -203,39 +220,51 @@ export default function ClientDashboard() {
                     });
 
                     return (
-                      <div key={b.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
-                        {/* Thumbnail */}
-                        <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden shrink-0">
-                          {thumb ? (
-                            <img src={thumb} alt={svc?.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Calendar size={20} className="text-gray-300" />
-                            </div>
-                          )}
+                      <div key={b.id} className="flex flex-col px-6 py-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          {/* Thumbnail */}
+                          <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+                            {thumb ? (
+                              <img src={thumb} alt={svc?.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Calendar size={20} className="text-gray-300" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-gray-900 text-[14px] font-bold truncate">{svc?.title ?? "Servicio"}</p>
+                            <p className="text-gray-500 text-[12px] mt-0.5">
+                              {svc?.service_categories?.name ?? "—"} · {svc?.providers?.business_name ?? "—"}
+                            </p>
+                            <p className="text-gray-400 text-[12px] mt-0.5">{date}</p>
+                          </div>
+
+                          {/* Price */}
+                          <div className="text-right shrink-0">
+                            <p className="text-gray-900 text-[14px] font-black">{formatPrice(price)}</p>
+                          </div>
+
+                          {/* Status badge */}
+                          <div
+                            className="px-3 py-1 rounded-full text-[12px] font-bold shrink-0"
+                            style={{ color: status.color, background: status.bg }}
+                          >
+                            {status.label}
+                          </div>
                         </div>
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-gray-900 text-[14px] font-bold truncate">{svc?.title ?? "Servicio"}</p>
-                          <p className="text-gray-500 text-[12px] mt-0.5">
-                            {svc?.service_categories?.name ?? "—"} · {svc?.providers?.business_name ?? "—"}
-                          </p>
-                          <p className="text-gray-400 text-[12px] mt-0.5">{date}</p>
-                        </div>
-
-                        {/* Price */}
-                        <div className="text-right shrink-0">
-                          <p className="text-gray-900 text-[14px] font-black">{formatPrice(price)}</p>
-                        </div>
-
-                        {/* Status badge */}
-                        <div
-                          className="px-3 py-1 rounded-full text-[12px] font-bold shrink-0"
-                          style={{ color: status.color, background: status.bg }}
-                        >
-                          {status.label}
-                        </div>
+                        {/* Payment notice for pending bookings */}
+                        {b.status === "pending" && (
+                          <div className="flex items-center gap-2 mt-2.5 ml-[72px]">
+                            <CreditCard size={12} className="text-amber-500 shrink-0" />
+                            <p className="text-amber-600 text-[11px] font-medium">
+                              El pago se solicitará cuando el proveedor confirme tu reserva
+                            </p>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

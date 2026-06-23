@@ -303,12 +303,21 @@ export default function DetailPage() {
                 </button>
 
                 <div className="border-t border-gray-100 pt-4 mt-4 flex flex-col gap-2">
-                  {["Pago 100% seguro y encriptado", "Cancelación gratuita hasta 7 días antes", "Soporte disponible 24/7"].map((item) => (
+                  {["Cancelación gratuita hasta 7 días antes", "Soporte disponible 24/7"].map((item) => (
                     <div key={item} className="flex gap-2 items-center">
                       <Check size={13} className="text-[#f39e10] shrink-0" />
                       <span className="text-gray-500 text-[12px]">{item}</span>
                     </div>
                   ))}
+                  {/* Payment timing notice */}
+                  <div className="flex gap-2 items-start mt-1 pt-3 border-t border-gray-100">
+                    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#f39e10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    <span className="text-gray-500 text-[12px] leading-relaxed">
+                      El pago se solicita solo cuando el proveedor confirme tu reserva. No se realiza ningún cargo al guardar.
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
