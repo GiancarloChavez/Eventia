@@ -96,7 +96,7 @@ function InputField({
 
 // ── Main form ───────────────────────────────────────────────────
 
-type Substep = "email" | "profile" | "verify";
+type Substep = "email" | "profile" | "otp";
 
 function RegistroForm() {
   const searchParams = useSearchParams();
@@ -110,6 +110,8 @@ function RegistroForm() {
   const [loading,      setLoading]      = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
+  const [userId,       setUserId]       = useState<string | null>(null);
+  const [otp,          setOtp]          = useState("");
 
   const [form, setForm] = useState({
     nombre:   "",
@@ -155,59 +157,70 @@ function RegistroForm() {
     setError(null);
     setLoading(true);
 
-    const role = isProvider ? "provider" : "client";
-
-    // Step 1: Register via Supabase client in the browser so the PKCE code
-    // verifier is stored in cookies and the confirmation email is sent via
-    // whatever SMTP is configured (Brevo).
-    const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp({
-      email,
-      password: form.password,
-      options: {
-        data: { full_name: form.nombre, role },
-        emailRedirectTo: `${window.location.origin}/auth/verify`,
-      },
-    });
-
-    if (signUpError) {
-      setLoading(false);
-      setError(
-        signUpError.message.toLowerCase().includes("already registered")
-          ? "Este correo ya tiene una cuenta. Inicia sesión."
-          : signUpError.message
-      );
-      return;
-    }
-
-    // Supabase returns an existing user with empty identities instead of an
-    // error when email confirmations are enabled and the address is already taken.
-    if (!signUpData.user?.identities || signUpData.user.identities.length === 0) {
-      setLoading(false);
-      setError("Este correo ya tiene una cuenta. Inicia sesión.");
-      return;
-    }
-
-    const userId = signUpData.user.id;
-    if (!userId) {
-      setLoading(false);
-      setError("Error inesperado al crear la cuenta.");
-      return;
-    }
-
-    // Step 2: Set up profile + providers row via admin API.
-    await fetch("/api/auth/complete-signup", {
+    const res = await fetch("/api/auth/complete-signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_id:   userId,
+        email,
         full_name: form.nombre,
-        role,
+        password:  form.password,
+        role:      isProvider ? "provider" : "client",
         phone:     form.telefono || null,
       }),
     });
 
+    const body = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      setLoading(false);
+      setError(body.error ?? "Error al crear la cuenta.");
+      return;
+    }
+
+    setUserId(body.user_id);
     setLoading(false);
-    setSubstep("verify");
+    setSubstep("otp");
+  };
+
+  // ── Sub-paso 3: Verificar código OTP ─────────────────────────
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length !== 6) {
+      setError("Ingresa el código de 6 dígitos.");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+
+    const res = await fetch("/api/auth/confirm-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, code: otp }),
+    });
+
+    const body = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      setLoading(false);
+      setError(body.error ?? "Código incorrecto.");
+      return;
+    }
+
+    // Code verified — sign in and redirect
+    const { error: signInError } = await getSupabase().auth.signInWithPassword({
+      email,
+      password: form.password,
+    });
+
+    setLoading(false);
+
+    if (signInError) {
+      setError("Cuenta verificada. Ya puedes iniciar sesión.");
+      return;
+    }
+
+    window.location.href = isProvider ? "/proveedor/onboarding/negocio" : "/cliente";
   };
 
   // ── Password strength ──────────────────────────────────────────
@@ -328,9 +341,9 @@ function RegistroForm() {
         </>
       )}
 
-      {/* ══ PANTALLA: Verifica tu correo ══════════════════════ */}
-      {substep === "verify" && (
-        <div className="flex flex-col items-center text-center max-w-[400px]">
+      {/* ══ PANTALLA: Código de verificación ══════════════════ */}
+      {substep === "otp" && (
+        <div className="flex flex-col items-center text-center w-full max-w-[400px]">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
             style={{ background: `${accent}1a` }}
@@ -338,22 +351,54 @@ function RegistroForm() {
             <MailCheck size={32} style={{ color: accent }} strokeWidth={1.8} />
           </div>
           <h1 className="text-gray-900 text-[24px] font-black tracking-[-0.4px] mb-2">
-            Revisa tu correo
+            Verifica tu correo
           </h1>
           <p className="text-gray-500 text-[14px] leading-relaxed mb-1">
-            Te enviamos un enlace de confirmación a
+            Te enviamos un código de 6 dígitos a
           </p>
           <p className="text-gray-900 font-bold text-[14px] mb-6">{email}</p>
-          <p className="text-gray-400 text-[13px] leading-relaxed">
-            Haz clic en el enlace del correo para activar tu cuenta y acceder a Eventia.
-            Revisa también tu carpeta de spam.
-          </p>
-          <div className="mt-8 w-full h-px bg-gray-100" />
-          <p className="text-gray-400 text-[12px] mt-5">
-            ¿Correo equivocado?{" "}
+
+          {error && (
+            <div className="w-full mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[13px]">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleVerifyOtp} className="w-full flex flex-col gap-3">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "")); setError(null); }}
+              placeholder="000000"
+              className="w-full text-center py-4 rounded-xl border border-gray-200 text-[32px] font-black tracking-[12px] outline-none"
+              style={{ fontFamily: "monospace" }}
+              onFocus={(e) => (e.target.style.borderColor = accent)}
+              onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={loading || otp.length !== 6}
+              className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold cursor-pointer border-none"
+              style={{
+                background: isProvider
+                  ? "linear-gradient(135deg,#f59e0b 0%,#f39e10 55%,#e88e00 100%)"
+                  : "linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)",
+                opacity: (loading || otp.length !== 6) ? 0.6 : 1,
+              }}
+            >
+              {loading ? "Verificando..." : "Confirmar cuenta"}
+            </button>
+          </form>
+
+          <p className="text-gray-400 text-[12px] mt-6">
+            Revisa también tu carpeta de spam.{" "}
             <button
               type="button"
-              onClick={() => { setSubstep("email"); setEmail(""); setError(null); }}
+              onClick={() => { setSubstep("email"); setEmail(""); setOtp(""); setError(null); }}
               className="font-semibold underline bg-transparent border-none cursor-pointer p-0"
               style={{ color: accent }}
             >
