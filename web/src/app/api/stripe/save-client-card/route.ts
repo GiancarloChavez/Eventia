@@ -16,37 +16,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "paymentMethodId requerido." }, { status: 400 });
   }
 
-  const { data: provider } = await supabase
-    .from("providers")
-    .select("id, stripe_customer_id")
-    .eq("user_id", session.user.id)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", session.user.id)
     .single();
 
-  if (!provider) return NextResponse.json({ error: "Proveedor no encontrado." }, { status: 404 });
+  const stripe  = getStripe();
+  const pm      = await stripe.paymentMethods.retrieve(paymentMethodId);
+  const card    = pm.card;
 
-  const stripe = getStripe();
-  const pm   = await stripe.paymentMethods.retrieve(paymentMethodId);
-  const card = pm.card;
-
-  // Attach PaymentMethod to Customer and set as default
-  if (provider.stripe_customer_id) {
+  if (profile?.stripe_customer_id) {
     await stripe.paymentMethods.attach(paymentMethodId, {
-      customer: provider.stripe_customer_id,
+      customer: profile.stripe_customer_id,
     });
-    await stripe.customers.update(provider.stripe_customer_id, {
+    await stripe.customers.update(profile.stripe_customer_id, {
       invoice_settings: { default_payment_method: paymentMethodId },
     });
   }
 
   const { error: dbError } = await supabase
-    .from("providers")
+    .from("profiles")
     .update({
       stripe_payment_method_id: paymentMethodId,
-      stripe_card_last4:        card?.last4  ?? null,
-      stripe_card_brand:        card?.brand  ?? null,
-      onboarding_step:          4,
+      stripe_card_last4:        card?.last4 ?? null,
+      stripe_card_brand:        card?.brand ?? null,
     })
-    .eq("id", provider.id);
+    .eq("id", session.user.id);
 
   if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
 

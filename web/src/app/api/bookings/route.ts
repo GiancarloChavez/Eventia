@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase-server";
 
 export async function POST(request: NextRequest) {
-  const { service_id, event_date, quoted_price } = await request.json();
+  const { service_id, event_date, quoted_price, client_payment_method_id } = await request.json();
 
   if (!service_id || !event_date) {
     return NextResponse.json({ error: "Faltan datos: service_id y event_date son requeridos." }, { status: 400 });
@@ -27,11 +27,12 @@ export async function POST(request: NextRequest) {
   );
 
   const { error: insertError } = await admin.from("bookings").insert({
-    client_id:    user.id,
+    client_id:                user.id,
     service_id,
     event_date,
-    status:       "pending",
-    quoted_price: quoted_price ?? null,
+    status:                   "pending",
+    quoted_price:             quoted_price ?? null,
+    client_payment_method_id: client_payment_method_id ?? null,
   });
 
   if (insertError) {

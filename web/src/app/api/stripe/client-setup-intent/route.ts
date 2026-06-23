@@ -10,27 +10,25 @@ export async function POST() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: provider } = await supabase
-    .from("providers")
-    .select("id, stripe_customer_id")
-    .eq("user_id", session.user.id)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", session.user.id)
     .single();
 
-  if (!provider) return NextResponse.json({ error: "Proveedor no encontrado." }, { status: 404 });
-
   const stripe = getStripe();
-  let customerId = provider.stripe_customer_id;
+  let customerId = profile?.stripe_customer_id;
 
   if (!customerId) {
     const customer = await stripe.customers.create({
       email:    session.user.email,
-      metadata: { provider_id: provider.id, user_id: session.user.id },
+      metadata: { user_id: session.user.id },
     });
     customerId = customer.id;
     await supabase
-      .from("providers")
+      .from("profiles")
       .update({ stripe_customer_id: customerId })
-      .eq("id", provider.id);
+      .eq("id", session.user.id);
   }
 
   const setupIntent = await stripe.setupIntents.create({

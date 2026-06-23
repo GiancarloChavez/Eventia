@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Calendar, Check, Star } from "lucide-react";
+import { MapPin, Calendar, Check, Star, CreditCard, Lock, ChevronLeft } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
 import { SERVICE_SELECT, formatPrice, type DbService } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
 import { StarRating } from "@/components/shared/star-rating";
@@ -11,19 +13,36 @@ import { CategoryBadge } from "@/components/shared/category-badge";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { ServiceCard } from "@/components/shared/service-card";
 
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+type BookingStep = "date" | "card" | "done";
+
 export default function DetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
 
-  const [service, setService] = useState<DbService | null>(null);
-  const [related, setRelated] = useState<DbService[]>([]);
-  const [activeImg, setActiveImg] = useState(0);
+  const [service,      setService]      = useState<DbService | null>(null);
+  const [related,      setRelated]      = useState<DbService[]>([]);
+  const [activeImg,    setActiveImg]    = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [booking, setBooking] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading,      setLoading]      = useState(true);
+
+  // Booking + card state
+  const [bookingStep,     setBookingStep]     = useState<BookingStep>("date");
+  const [existingCard,    setExistingCard]    = useState<{ last4: string; brand: string } | null>(null);
+  const [cardReady,       setCardReady]       = useState(false);
+  const [cardComplete,    setCardComplete]    = useState(false);
+  const [cardError,       setCardError]       = useState<string | null>(null);
+  const [cardMountFail,   setCardMountFail]   = useState(false);
+  const [submitting,      setSubmitting]      = useState(false);
+  const [bookingError,    setBookingError]    = useState<string | null>(null);
+
+  const cardMountRef = useRef<HTMLDivElement>(null);
+  const stripeRef    = useRef<Stripe | null>(null);
+  const cardRef      = useRef<StripeCardElement | null>(null);
+  const mountedRef   = useRef(false);
+  const clientSecretRef = useRef<string | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -31,15 +50,9 @@ export default function DetailPage() {
     async function fetchService() {
       setLoading(true);
       const sb = getSupabase();
-      const { data } = await sb
-        .from("services")
-        .select(SERVICE_SELECT)
-        .eq("id", id)
-        .single();
-
+      const { data } = await sb.from("services").select(SERVICE_SELECT).eq("id", id).single();
       const svc = data as unknown as DbService | null;
       setService(svc);
-
       if (svc) {
         const { data: rel } = await sb
           .from("services")
@@ -55,6 +68,163 @@ export default function DetailPage() {
     fetchService();
   }, [id]);
 
+  // Mount Stripe card element when step becomes "card" and no existing card
+  useEffect(() => {
+    if (bookingStep !== "card" || existingCard || mountedRef.current) return;
+    if (!clientSecretRef.current || !cardMountRef.current) return;
+    mountedRef.current = true;
+
+    stripePromise.then((stripe) => {
+      if (!stripe || !cardMountRef.current) return;
+      stripeRef.current = stripe;
+
+      const elements    = stripe.elements();
+      const cardElement = elements.create("card", {
+        hidePostalCode: true,
+        style: {
+          base: {
+            fontSize: "14px",
+            fontFamily: "Inter, system-ui, sans-serif",
+            color: "#111827",
+            "::placeholder": { color: "#9ca3af" },
+          },
+          invalid: { color: "#ef4444" },
+        },
+      });
+
+      cardElement.mount(cardMountRef.current);
+      cardRef.current = cardElement;
+
+      const readyRef = { value: false };
+      cardElement.on("ready", () => { readyRef.value = true; setCardReady(true); });
+      cardElement.on("change", (e) => { setCardError(e.error?.message ?? null); setCardComplete(e.complete); });
+
+      const timeout = setTimeout(() => { if (!readyRef.value) setCardMountFail(true); }, 12_000);
+      return () => clearTimeout(timeout);
+    });
+  }, [bookingStep, existingCard]);
+
+  // ── Step 1: user clicks "Reservar" ──────────────────────────────────────
+
+  const handleStartBooking = async () => {
+    if (!selectedDate) return;
+    setBookingError(null);
+    setSubmitting(true);
+
+    const sb = getSupabase();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) { router.push("/auth/login"); return; }
+
+    // Check if client already has a saved card
+    const { data: profile } = await sb
+      .from("profiles")
+      .select("stripe_payment_method_id, stripe_card_last4, stripe_card_brand")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.stripe_payment_method_id && profile.stripe_card_last4) {
+      setExistingCard({ last4: profile.stripe_card_last4, brand: profile.stripe_card_brand ?? "card" });
+      setSubmitting(false);
+      setBookingStep("card");
+      return;
+    }
+
+    // No card saved — create SetupIntent and show card form
+    const res  = await fetch("/api/stripe/client-setup-intent", { method: "POST" });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setBookingError(data.error ?? "Error al inicializar el pago.");
+      setSubmitting(false);
+      return;
+    }
+
+    clientSecretRef.current = data.clientSecret;
+    setSubmitting(false);
+    setBookingStep("card");
+  };
+
+  // ── Step 2: confirm card + save booking ─────────────────────────────────
+
+  const handleConfirmCard = async () => {
+    setBookingError(null);
+    setSubmitting(true);
+
+    const sb = getSupabase();
+    let paymentMethodId: string | null = null;
+
+    if (existingCard) {
+      // Use existing saved card
+      const { data: { user } } = await sb.auth.getUser();
+      if (user) {
+        const { data: profile } = await sb
+          .from("profiles")
+          .select("stripe_payment_method_id")
+          .eq("id", user.id)
+          .single();
+        paymentMethodId = profile?.stripe_payment_method_id ?? null;
+      }
+    } else {
+      // Confirm new card via Stripe
+      if (!stripeRef.current || !cardRef.current || !clientSecretRef.current) {
+        setBookingError("Error al procesar la tarjeta.");
+        setSubmitting(false);
+        return;
+      }
+
+      const { setupIntent, error: stripeErr } = await stripeRef.current.confirmCardSetup(
+        clientSecretRef.current,
+        { payment_method: { card: cardRef.current } }
+      );
+
+      if (stripeErr || !setupIntent?.payment_method) {
+        setBookingError(stripeErr?.message ?? "No se pudo validar la tarjeta.");
+        setSubmitting(false);
+        return;
+      }
+
+      paymentMethodId = setupIntent.payment_method as string;
+
+      // Save card to profile
+      const saveRes = await fetch("/api/stripe/save-client-card", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ paymentMethodId }),
+      });
+      if (!saveRes.ok) {
+        const err = await saveRes.json().catch(() => ({}));
+        setBookingError(err.error ?? "Error al guardar la tarjeta.");
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    // Save booking
+    const bookRes = await fetch("/api/bookings", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        service_id:               service!.id,
+        event_date:               selectedDate,
+        quoted_price:             service!.base_price ?? null,
+        client_payment_method_id: paymentMethodId,
+      }),
+    });
+
+    setSubmitting(false);
+
+    if (!bookRes.ok) {
+      const err = await bookRes.json().catch(() => ({}));
+      if (bookRes.status === 401) { router.push("/auth/login"); return; }
+      setBookingError(err.error ?? "Error al guardar la reserva.");
+      return;
+    }
+
+    setBookingStep("done");
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="bg-[#f4f5f7] min-h-screen flex items-center justify-center pt-[72px]">
@@ -68,22 +238,19 @@ export default function DetailPage() {
       <div className="bg-[#f4f5f7] min-h-screen flex items-center justify-center pt-[72px]">
         <div className="text-center">
           <p className="text-gray-500 text-[16px] mb-4">Servicio no encontrado.</p>
-          <Link href="/catalogo" className="text-[#f39e10] font-semibold hover:underline">
-            Ver catálogo
-          </Link>
+          <Link href="/catalogo" className="text-[#f39e10] font-semibold hover:underline">Ver catálogo</Link>
         </div>
       </div>
     );
   }
 
   const sortedImages = [...service.images].sort((a, b) => a.display_order - b.display_order);
-  const imageUrls = sortedImages.map((i) => i.url);
-  const coverUrl = imageUrls[0] ?? "https://picsum.photos/seed/evdefault/800/520";
-  const isVerified = service.provider?.status === "approved";
+  const imageUrls    = sortedImages.map((i) => i.url);
+  const coverUrl     = imageUrls[0] ?? "https://picsum.photos/seed/evdefault/800/520";
+  const isVerified   = service.provider?.status === "approved";
   const categoryLabel = service.category?.name ?? "";
-  const providerName = service.provider?.business_name ?? "Proveedor";
-  const providerLogo = service.provider?.logo_url ?? null;
-
+  const providerName  = service.provider?.business_name ?? "Proveedor";
+  const providerLogo  = service.provider?.logo_url ?? null;
 
   return (
     <div className="bg-[#f4f5f7] min-h-screen pt-[72px]">
@@ -100,6 +267,7 @@ export default function DetailPage() {
 
       <div className="px-10 py-7">
         <div className="grid gap-9 items-start" style={{ gridTemplateColumns: "1fr 360px" }}>
+
           {/* Left */}
           <div>
             {/* Gallery */}
@@ -148,9 +316,7 @@ export default function DetailPage() {
                 <>
                   <span className="text-gray-300">·</span>
                   <span className="text-gray-500 text-[13px]">
-                    Capacidad: <strong className="text-gray-900">
-                      {service.capacity_min}–{service.capacity_max} personas
-                    </strong>
+                    Capacidad: <strong className="text-gray-900">{service.capacity_min}–{service.capacity_max} personas</strong>
                   </span>
                 </>
               )}
@@ -193,12 +359,10 @@ export default function DetailPage() {
                   ))}
                 </div>
               </div>
-
               <h2 className="text-gray-900 text-[17px] font-bold mb-4">Reseñas</h2>
               <p className="text-gray-500 text-[14px]">Aún no hay reseñas. ¡Sé el primero!</p>
             </div>
 
-            {/* Related */}
             {related.length > 0 && (
               <div className="mt-10">
                 <h2 className="text-gray-900 text-[20px] font-bold mb-4">Servicios similares</h2>
@@ -212,113 +376,187 @@ export default function DetailPage() {
           {/* Right: Booking widget */}
           <aside className="sticky top-[88px]">
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden" style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.1)" }}>
+
+              {/* Price header */}
               <div className="bg-[#f39e10] px-6 py-5">
                 <div className="text-white/80 text-[12px] uppercase tracking-[0.6px]">Precio desde</div>
-                <div className="text-white text-[34px] font-black leading-tight">
-                  {formatPrice(service.base_price)}
-                </div>
+                <div className="text-white text-[34px] font-black leading-tight">{formatPrice(service.base_price)}</div>
                 <div className="text-white/65 text-[12px] mt-0.5">Sin cargos ocultos</div>
               </div>
 
               <div className="p-6">
-                <label className="text-gray-900 text-[13px] font-semibold block mb-2">Fecha del evento</label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  min={today}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full rounded-xl py-3 px-3.5 text-[14px] outline-none transition-all"
-                  style={{
-                    border: `1.5px solid ${selectedDate ? "#f39e10" : "#e5e7eb"}`,
-                    color: selectedDate ? "#111827" : "#9ca3af",
-                    background: "#fff",
-                    fontFamily: "inherit",
-                    boxSizing: "border-box",
-                  }}
-                  suppressHydrationWarning
-                />
 
-                <div className="flex gap-1.5 items-center bg-[rgba(243,158,16,0.08)] border border-[rgba(243,158,16,0.22)] rounded-lg px-3 py-2.5 my-3.5 text-[12px] text-gray-500">
-                  <Calendar size={13} className="text-[#f39e10]" />
-                  Disponibilidad: <strong className="text-gray-900 ml-0.5">Consultar con el proveedor</strong>
-                </div>
-
-                {/* Toast de éxito */}
-                {showConfirm && (
-                  <div className="flex items-center gap-2.5 bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.28)] rounded-xl px-4 py-3 mb-3">
-                    <Check size={15} className="text-green-600 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-green-800 text-[13px] font-semibold">Guardado en tus reservas</p>
-                      <p className="text-green-700 text-[11px]">Puedes verlo en tu lista de reservas</p>
+                {/* ── Step: done ── */}
+                {bookingStep === "done" && (
+                  <div className="flex flex-col items-center text-center py-4">
+                    <div className="w-14 h-14 rounded-full bg-[rgba(34,197,94,0.10)] flex items-center justify-center mb-4">
+                      <Check size={28} className="text-green-600" strokeWidth={2.5} />
                     </div>
-                    <Link href="/cliente" className="text-[#f39e10] text-[12px] font-bold whitespace-nowrap hover:underline">
-                      Ver lista →
+                    <h3 className="text-gray-900 font-black text-[17px] mb-1">¡Reserva guardada!</h3>
+                    <p className="text-gray-500 text-[13px] mb-5 leading-relaxed">
+                      El proveedor revisará tu solicitud. Te notificaremos cuando la confirme.
+                    </p>
+                    <Link
+                      href="/cliente"
+                      className="w-full rounded-xl py-3 text-center text-[14px] font-bold text-white border-none"
+                      style={{ background: "#f39e10", display: "block" }}
+                    >
+                      Ver mis reservas →
                     </Link>
                   </div>
                 )}
 
-                {bookingError && (
-                  <p className="text-red-500 text-[12px] mb-2">{bookingError}</p>
+                {/* ── Step: date ── */}
+                {bookingStep === "date" && (
+                  <>
+                    <label className="text-gray-900 text-[13px] font-semibold block mb-2">Fecha del evento</label>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      min={today}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="w-full rounded-xl py-3 px-3.5 text-[14px] outline-none transition-all"
+                      style={{
+                        border: `1.5px solid ${selectedDate ? "#f39e10" : "#e5e7eb"}`,
+                        color: selectedDate ? "#111827" : "#9ca3af",
+                        background: "#fff",
+                        fontFamily: "inherit",
+                        boxSizing: "border-box",
+                      }}
+                      suppressHydrationWarning
+                    />
+
+                    <div className="flex gap-1.5 items-center bg-[rgba(243,158,16,0.08)] border border-[rgba(243,158,16,0.22)] rounded-lg px-3 py-2.5 my-3.5 text-[12px] text-gray-500">
+                      <Calendar size={13} className="text-[#f39e10]" />
+                      Disponibilidad: <strong className="text-gray-900 ml-0.5">Consultar con el proveedor</strong>
+                    </div>
+
+                    {bookingError && (
+                      <p className="text-red-500 text-[12px] mb-3">{bookingError}</p>
+                    )}
+
+                    <button
+                      disabled={!selectedDate || submitting}
+                      onClick={handleStartBooking}
+                      className="w-full border-none rounded-xl py-3.5 text-[15px] font-bold mb-2.5 transition-colors flex items-center justify-center gap-2"
+                      style={{
+                        background: selectedDate ? "#f39e10" : "#f3f4f6",
+                        color:      selectedDate ? "#fff"    : "#9ca3af",
+                        cursor:     selectedDate && !submitting ? "pointer" : "default",
+                      }}
+                    >
+                      {submitting ? (
+                        <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Verificando...</>
+                      ) : "Reservar ahora →"}
+                    </button>
+
+                    <div className="border-t border-gray-100 pt-4 mt-2 flex flex-col gap-2">
+                      {["Cancelación gratuita hasta 7 días antes", "Soporte disponible 24/7"].map((item) => (
+                        <div key={item} className="flex gap-2 items-center">
+                          <Check size={13} className="text-[#f39e10] shrink-0" />
+                          <span className="text-gray-500 text-[12px]">{item}</span>
+                        </div>
+                      ))}
+                      <div className="flex gap-2 items-start mt-1 pt-3 border-t border-gray-100">
+                        <CreditCard size={13} className="text-[#f39e10] shrink-0 mt-0.5" />
+                        <span className="text-gray-500 text-[12px] leading-relaxed">
+                          Se solicitará tu tarjeta para confirmar la reserva. Sin cobros hasta que el proveedor acepte.
+                        </span>
+                      </div>
+                    </div>
+                  </>
                 )}
 
-                <button
-                  disabled={!selectedDate || booking || showConfirm}
-                  onClick={async () => {
-                    if (!selectedDate || !service) return;
-                    setBooking(true);
-                    setBookingError(null);
-                    const res = await fetch("/api/bookings", {
-                      method:  "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body:    JSON.stringify({
-                        service_id:   service.id,
-                        event_date:   selectedDate,
-                        quoted_price: service.base_price ?? null,
-                      }),
-                    });
-                    setBooking(false);
-                    if (!res.ok) {
-                      const body = await res.json().catch(() => ({}));
-                      if (res.status === 401) { router.push("/auth/login"); return; }
-                      setBookingError(body.error || "Error al guardar la reserva.");
-                      return;
-                    }
-                    setShowConfirm(true);
-                  }}
-                  className="w-full border-none rounded-xl py-3.5 text-[15px] font-bold mb-2.5 transition-colors"
-                  style={{
-                    background: showConfirm ? "#e5e7eb" : selectedDate ? "#f39e10" : "#f3f4f6",
-                    color:      showConfirm ? "#9ca3af" : selectedDate ? "#fff" : "#9ca3af",
-                    cursor:     selectedDate && !booking && !showConfirm ? "pointer" : "default",
-                  }}
-                >
-                  {booking ? "Guardando..." : showConfirm ? "Añadido a reservas" : "Guardar en mis reservas"}
-                </button>
+                {/* ── Step: card ── */}
+                {bookingStep === "card" && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => { setBookingStep("date"); setBookingError(null); }}
+                      className="flex items-center gap-1 text-gray-400 text-[12px] hover:text-gray-600 mb-4 bg-transparent border-none cursor-pointer p-0"
+                    >
+                      <ChevronLeft size={14} /> Cambiar fecha
+                    </button>
 
-                <button className="w-full bg-none border border-gray-200 text-gray-700 rounded-xl py-3 text-[14px] font-semibold cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                  <svg width={16} height={16} viewBox="0 0 24 24" fill="#f39e10">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z" />
-                  </svg>
-                  Solicitar cotización
-                </button>
-
-                <div className="border-t border-gray-100 pt-4 mt-4 flex flex-col gap-2">
-                  {["Cancelación gratuita hasta 7 días antes", "Soporte disponible 24/7"].map((item) => (
-                    <div key={item} className="flex gap-2 items-center">
-                      <Check size={13} className="text-[#f39e10] shrink-0" />
-                      <span className="text-gray-500 text-[12px]">{item}</span>
+                    <div className="text-gray-500 text-[12px] mb-4 flex items-center gap-1.5">
+                      <Calendar size={12} className="text-[#f39e10]" />
+                      Fecha: <strong className="text-gray-900">{new Date(selectedDate + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" })}</strong>
                     </div>
-                  ))}
-                  {/* Payment timing notice */}
-                  <div className="flex gap-2 items-start mt-1 pt-3 border-t border-gray-100">
-                    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#f39e10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
-                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-                    </svg>
-                    <span className="text-gray-500 text-[12px] leading-relaxed">
-                      El pago se solicita solo cuando el proveedor confirme tu reserva. No se realiza ningún cargo al guardar.
-                    </span>
+
+                    {/* Existing card */}
+                    {existingCard ? (
+                      <div className="flex items-center gap-3 bg-[rgba(243,158,16,0.06)] border border-[rgba(243,158,16,0.22)] rounded-xl p-4 mb-4">
+                        <CreditCard size={18} style={{ color: "#f39e10" }} strokeWidth={1.8} className="shrink-0" />
+                        <div className="flex-1">
+                          <div className="text-gray-900 text-[13px] font-semibold capitalize">
+                            {existingCard.brand} •••• {existingCard.last4}
+                          </div>
+                          <div className="text-gray-400 text-[11px]">Tarjeta guardada</div>
+                        </div>
+                        <Check size={15} className="text-green-500 shrink-0" />
+                      </div>
+                    ) : (
+                      <>
+                        <label className="text-gray-700 text-[13px] font-semibold block mb-2">
+                          Datos de tu tarjeta
+                        </label>
+
+                        {/* Stripe card element */}
+                        <div className="relative mb-3">
+                          {!cardReady && !cardMountFail && (
+                            <div className="w-full px-3.5 py-3.5 rounded-xl border border-gray-200 bg-white flex items-center gap-2" style={{ minHeight: 44 }}>
+                              <div className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin shrink-0" />
+                              <span className="text-gray-300 text-[13px]">Cargando formulario seguro…</span>
+                            </div>
+                          )}
+                          {cardMountFail && (
+                            <div className="w-full px-3.5 py-3.5 rounded-xl border border-red-100 bg-red-50 text-red-600 text-[13px]">
+                              No se pudo conectar con Stripe. Recarga la página.
+                            </div>
+                          )}
+                          <div
+                            ref={cardMountRef}
+                            className="w-full px-3.5 py-3.5 rounded-xl border border-gray-200 bg-white"
+                            style={{
+                              minHeight: 44,
+                              visibility: cardReady ? "visible" : "hidden",
+                              position:   cardReady ? "relative" : "absolute",
+                              top: 0, left: 0, right: 0,
+                            }}
+                          />
+                        </div>
+                        {cardError && <p className="text-red-500 text-[12px] mb-3">{cardError}</p>}
+
+                        <div className="flex items-start gap-2 mb-4">
+                          <Lock size={12} className="text-[#f39e10] shrink-0 mt-0.5" />
+                          <span className="text-gray-400 text-[11px] leading-relaxed">
+                            Datos cifrados por Stripe. No se realizará ningún cobro hasta que el proveedor confirme.
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    {bookingError && (
+                      <p className="text-red-500 text-[12px] mb-3">{bookingError}</p>
+                    )}
+
+                    <button
+                      onClick={handleConfirmCard}
+                      disabled={submitting || (!existingCard && !cardComplete)}
+                      className="w-full border-none rounded-xl py-3.5 text-[15px] font-bold cursor-pointer flex items-center justify-center gap-2"
+                      style={{
+                        background: "linear-gradient(135deg, #f59e0b 0%, #f39e10 55%, #e88e00 100%)",
+                        boxShadow:  "0 4px 20px rgba(243,158,16,0.4)",
+                        opacity:    submitting || (!existingCard && !cardComplete) ? 0.6 : 1,
+                        transition: "opacity 200ms",
+                      }}
+                    >
+                      {submitting ? (
+                        <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Confirmando...</>
+                      ) : "Confirmar reserva →"}
+                    </button>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </aside>
