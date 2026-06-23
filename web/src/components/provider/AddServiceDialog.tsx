@@ -173,6 +173,15 @@ function BoolToggle({ label, value, onChange }: {
   );
 }
 
+// ── Category selector options ─────────────────────────────────
+
+const CATEGORY_OPTIONS = [
+  { id: 1, label: "Locales y salones",  Icon: MapPin    },
+  { id: 2, label: "Fotografía y video", Icon: Camera    },
+  { id: 3, label: "Música",             Icon: Music2    },
+  { id: 4, label: "Decoración",         Icon: Sparkles  },
+];
+
 // ── Props ────────────────────────────────────────────────────
 
 interface AddServiceDialogProps {
@@ -188,6 +197,7 @@ interface AddServiceDialogProps {
 export function AddServiceDialog({ open, onClose, providerId, categoryId, onSuccess }: AddServiceDialogProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedCat, setSelectedCat] = useState<number>(categoryId ?? 1);
 
   const [photos,        setPhotos]        = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
@@ -259,7 +269,21 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
     setPhotos([]);
     setPhotoPreviews([]);
     setError(null);
+    setSelectedCat(categoryId ?? 1);
     onClose();
+  };
+
+  const handleCatChange = (cat: number) => {
+    setSelectedCat(cat);
+    // Reset category-specific fields when switching
+    setForm((f) => ({
+      ...f,
+      spaceType: "", parking: false, amenities: [],
+      photoModality: "", coverageHours: "", deliveryDays: "", albumIncluded: false,
+      musicType: "", musicGenres: [], soundEquipment: false, lightingIncluded: false,
+      decoTypes: [], setupIncluded: false, customDesign: false,
+    }));
+    setError(null);
   };
 
   // ── Submit ────────────────────────────────────────────────
@@ -276,19 +300,19 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
       setError("Ingresa el precio base del servicio.");
       return;
     }
-    if (categoryId === 1 && photos.length === 0) {
+    if (selectedCat === 1 && photos.length === 0) {
       setError("Agrega al menos una foto del local.");
       return;
     }
-    if (categoryId === 2 && !form.photoModality) {
+    if (selectedCat === 2 && !form.photoModality) {
       setError("Selecciona la modalidad del servicio fotográfico.");
       return;
     }
-    if (categoryId === 3 && !form.musicType) {
+    if (selectedCat === 3 && !form.musicType) {
       setError("Selecciona el tipo de agrupación musical.");
       return;
     }
-    if (categoryId === 4 && form.decoTypes.length === 0) {
+    if (selectedCat === 4 && form.decoTypes.length === 0) {
       setError("Selecciona al menos un tipo de decoración.");
       return;
     }
@@ -298,36 +322,36 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
 
     const payload = {
       provider_id:  providerId,
-      category_id:  categoryId,
+      category_id:  selectedCat,
       title:        form.title,
       description:  form.description || null,
       pricing_type: form.pricingType,
       base_price:   form.pricingType === "fixed" ? parseFloat(form.basePrice) : null,
-      capacity_min: categoryId === 1 && form.capacityMin ? parseInt(form.capacityMin) : null,
-      capacity_max: categoryId === 1 && form.capacityMax ? parseInt(form.capacityMax) : null,
+      capacity_min: selectedCat === 1 && form.capacityMin ? parseInt(form.capacityMin) : null,
+      capacity_max: selectedCat === 1 && form.capacityMax ? parseInt(form.capacityMax) : null,
       event_types:  form.eventTypes,
       advance_days: form.advanceDays ? parseInt(form.advanceDays) : 0,
       location:     form.location || null,
       status:       "active",
       // Cat 1
-      space_type:  categoryId === 1 ? form.spaceType || null : null,
-      parking:     categoryId === 1 ? form.parking : null,
-      amenities:   categoryId === 1 ? form.amenities : null,
+      space_type:  selectedCat === 1 ? form.spaceType || null : null,
+      parking:     selectedCat === 1 ? form.parking : null,
+      amenities:   selectedCat === 1 ? form.amenities : null,
       // Cat 2
-      photo_modality:  categoryId === 2 ? form.photoModality || null : null,
-      coverage_hours:  (categoryId === 2 || categoryId === 3) && form.coverageHours
+      photo_modality:  selectedCat === 2 ? form.photoModality || null : null,
+      coverage_hours:  (selectedCat === 2 || selectedCat === 3) && form.coverageHours
         ? parseFloat(form.coverageHours) : null,
-      delivery_days:   categoryId === 2 && form.deliveryDays ? parseInt(form.deliveryDays) : null,
-      album_included:  categoryId === 2 ? form.albumIncluded : null,
+      delivery_days:   selectedCat === 2 && form.deliveryDays ? parseInt(form.deliveryDays) : null,
+      album_included:  selectedCat === 2 ? form.albumIncluded : null,
       // Cat 3
-      music_type:        categoryId === 3 ? form.musicType || null : null,
-      music_genres:      categoryId === 3 ? form.musicGenres : null,
-      sound_equipment:   categoryId === 3 ? form.soundEquipment : null,
-      lighting_included: categoryId === 3 ? form.lightingIncluded : null,
+      music_type:        selectedCat === 3 ? form.musicType || null : null,
+      music_genres:      selectedCat === 3 ? form.musicGenres : null,
+      sound_equipment:   selectedCat === 3 ? form.soundEquipment : null,
+      lighting_included: selectedCat === 3 ? form.lightingIncluded : null,
       // Cat 4
-      deco_types:    categoryId === 4 ? form.decoTypes : null,
-      setup_included: categoryId === 4 ? form.setupIncluded : null,
-      custom_design:  categoryId === 4 ? form.customDesign : null,
+      deco_types:    selectedCat === 4 ? form.decoTypes : null,
+      setup_included: selectedCat === 4 ? form.setupIncluded : null,
+      custom_design:  selectedCat === 4 ? form.customDesign : null,
     };
 
     const { data: inserted, error: insertError } = await supabase
@@ -371,7 +395,7 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
 
   if (!open) return null;
 
-  const catCfg    = categoryId ? CATEGORY_CONFIG[categoryId] : CATEGORY_CONFIG[1];
+  const catCfg    = CATEGORY_CONFIG[selectedCat] ?? CATEGORY_CONFIG[1];
   const inputCls  = "w-full px-3.5 py-3 rounded-xl border border-gray-200 text-[14px] outline-none transition-colors";
   const inputStyle = { fontFamily: "inherit" };
   const onFocus   = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -414,6 +438,35 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
               {error}
             </div>
           )}
+
+          {/* ── Categoría ── */}
+          <div>
+            <label className="text-gray-700 text-[13px] font-semibold block mb-2">
+              Tipo de servicio <span className="text-red-400">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {CATEGORY_OPTIONS.map(({ id, label, Icon }) => {
+                const active = selectedCat === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => handleCatChange(id)}
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl border-2 text-left transition-all cursor-pointer"
+                    style={{
+                      borderColor: active ? "#f39e10" : "#e5e7eb",
+                      background:  active ? "rgba(243,158,16,0.07)" : "#fff",
+                    }}
+                  >
+                    <Icon size={14} style={{ color: active ? "#f39e10" : "#9ca3af", flexShrink: 0 }} />
+                    <span className="text-[12px] font-semibold leading-tight" style={{ color: active ? "#92400e" : "#374151" }}>
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* ── Nombre ── */}
           <div>
@@ -510,7 +563,7 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
           </div>
 
           {/* ── Capacidad (Cat 1) ── */}
-          {categoryId === 1 && (
+          {selectedCat === 1 && (
             <div>
               <label className="text-gray-700 text-[13px] font-semibold block mb-1.5">
                 <span className="flex items-center gap-1.5">
@@ -596,7 +649,7 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
           </div>
 
           {/* ══ Cat 1: Locales ══ */}
-          {categoryId === 1 && (
+          {selectedCat === 1 && (
             <>
               <SectionDivider label="Detalles del local" />
 
@@ -632,7 +685,7 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
           )}
 
           {/* ══ Cat 2: Fotografía y video ══ */}
-          {categoryId === 2 && (
+          {selectedCat === 2 && (
             <>
               <SectionDivider label="Detalles fotográficos" />
 
@@ -706,7 +759,7 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
           )}
 
           {/* ══ Cat 3: Música ══ */}
-          {categoryId === 3 && (
+          {selectedCat === 3 && (
             <>
               <SectionDivider label="Detalles musicales" />
 
@@ -790,7 +843,7 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
           )}
 
           {/* ══ Cat 4: Decoración ══ */}
-          {categoryId === 4 && (
+          {selectedCat === 4 && (
             <>
               <SectionDivider label="Detalles de decoración" />
 
@@ -822,13 +875,13 @@ export function AddServiceDialog({ open, onClose, providerId, categoryId, onSucc
           )}
 
           {/* ══ Fotografías (todas las categorías) ══ */}
-          <SectionDivider label={`Fotografías${categoryId === 1 ? " del local *" : ""}`} />
+          <SectionDivider label={`Fotografías${selectedCat === 1 ? " del local *" : ""}`} />
           <div>
             <label className="text-gray-700 text-[13px] font-semibold block mb-2">
               <span className="flex items-center gap-1.5">
                 <ImageIcon size={13} className="text-gray-400" />
                 Fotos del servicio
-                {categoryId === 1 && <span className="text-red-400 ml-0.5">*</span>}
+                {selectedCat === 1 && <span className="text-red-400 ml-0.5">*</span>}
                 <span className="text-gray-400 text-[11px] font-normal">(máx. 8 · 5 MB c/u)</span>
               </span>
             </label>

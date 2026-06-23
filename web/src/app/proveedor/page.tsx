@@ -115,8 +115,11 @@ export default function ProviderDashboard() {
   const [newPreviews,     setNewPreviews]     = useState<string[]>([]);
   const [saving,          setSaving]          = useState(false);
   const [saveError,       setSaveError]       = useState<string | null>(null);
-  const [logoUploading,   setLogoUploading]   = useState(false);
-  const [addingService,   setAddingService]   = useState(false);
+  const [logoUploading,     setLogoUploading]     = useState(false);
+  const [addingService,     setAddingService]     = useState(false);
+  const [editingBizName,    setEditingBizName]    = useState(false);
+  const [bizNameInput,      setBizNameInput]      = useState("");
+  const [bizNameSaving,     setBizNameSaving]     = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -299,6 +302,18 @@ export default function ProviderDashboard() {
     }
     e.target.value = "";
     setLogoUploading(false);
+  };
+
+  // ── Business name edit ───────────────────────────────────
+
+  const handleSaveBizName = async () => {
+    if (!provider || !bizNameInput.trim()) return;
+    setBizNameSaving(true);
+    const supabase = getSupabase();
+    await supabase.from("providers").update({ business_name: bizNameInput.trim() }).eq("id", provider.id);
+    setProvider((p) => p ? { ...p, business_name: bizNameInput.trim() } : p);
+    setEditingBizName(false);
+    setBizNameSaving(false);
   };
 
   // ── Render ────────────────────────────────────────────────
@@ -624,8 +639,52 @@ export default function ProviderDashboard() {
               <h3 className="text-gray-900 text-[15px] font-bold">Información del negocio</h3>
             </div>
             <div className="px-6 py-5 flex flex-col gap-4">
+              {/* Nombre del negocio — editable */}
+              <div>
+                <div className="text-gray-400 text-[11px] uppercase tracking-[0.5px] font-semibold mb-1">Nombre del negocio</div>
+                {editingBizName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={bizNameInput}
+                      onChange={(e) => setBizNameInput(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-[14px] outline-none"
+                      style={{ fontFamily: "inherit" }}
+                      onFocus={(e) => (e.target.style.borderColor = "#f39e10")}
+                      onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSaveBizName}
+                      disabled={bizNameSaving || !bizNameInput.trim()}
+                      className="px-3 py-2 rounded-lg text-white text-[12px] font-bold border-none cursor-pointer"
+                      style={{ background: "#f39e10", opacity: bizNameSaving ? 0.7 : 1 }}
+                    >
+                      {bizNameSaving ? "..." : "Guardar"}
+                    </button>
+                    <button
+                      onClick={() => setEditingBizName(false)}
+                      className="px-3 py-2 rounded-lg border border-gray-200 text-gray-500 text-[12px] font-medium bg-white cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-800 text-[14px]">{provider?.business_name}</span>
+                    <button
+                      onClick={() => { setBizNameInput(provider?.business_name ?? ""); setEditingBizName(true); }}
+                      className="flex items-center gap-1 text-[12px] text-gray-400 hover:text-[#f39e10] transition-colors bg-transparent border-none cursor-pointer p-0"
+                    >
+                      <Pencil size={12} />
+                      Editar
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Resto de campos de solo lectura */}
               {[
-                { label: "Nombre del negocio",  value: provider?.business_name },
                 { label: "Categoría",           value: categoryLabel },
                 { label: "Ciudad",              value: provider?.city },
                 { label: "Teléfono",            value: provider?.phone },
