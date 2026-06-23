@@ -96,7 +96,7 @@ function InputField({
 
 // ── Main form ───────────────────────────────────────────────────
 
-type Substep = "email" | "profile" | "otp";
+type Substep = "email" | "profile" | "verify";
 
 function RegistroForm() {
   const searchParams = useSearchParams();
@@ -110,8 +110,6 @@ function RegistroForm() {
   const [loading,      setLoading]      = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
-  const [userId,       setUserId]       = useState<string | null>(null);
-  const [otp,          setOtp]          = useState("");
 
   const [form, setForm] = useState({
     nombre:   "",
@@ -157,70 +155,51 @@ function RegistroForm() {
     setError(null);
     setLoading(true);
 
-    const res = await fetch("/api/auth/complete-signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        full_name: form.nombre,
-        password:  form.password,
-        role:      isProvider ? "provider" : "client",
-        phone:     form.telefono || null,
-      }),
-    });
+    const role = isProvider ? "provider" : "client";
 
-    const body = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setLoading(false);
-      setError(body.error ?? "Error al crear la cuenta.");
-      return;
-    }
-
-    setUserId(body.user_id);
-    setLoading(false);
-    setSubstep("otp");
-  };
-
-  // ── Sub-paso 3: Verificar código OTP ─────────────────────────
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length !== 6) {
-      setError("Ingresa el código de 6 dígitos.");
-      return;
-    }
-    setError(null);
-    setLoading(true);
-
-    const res = await fetch("/api/auth/confirm-code", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, code: otp }),
-    });
-
-    const body = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setLoading(false);
-      setError(body.error ?? "Código incorrecto.");
-      return;
-    }
-
-    // Code verified — sign in and redirect
-    const { error: signInError } = await getSupabase().auth.signInWithPassword({
+    // signUp from the browser so Supabase sends the confirmation email
+    // from its own servers — no custom SMTP or domain needed.
+    const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp({
       email,
       password: form.password,
+      options: {
+        data: { full_name: form.nombre, role },
+        emailRedirectTo: `${window.location.origin}/auth/verify`,
+      },
     });
 
-    setLoading(false);
-
-    if (signInError) {
-      setError("Cuenta verificada. Ya puedes iniciar sesión.");
+    if (signUpError) {
+      setLoading(false);
+      setError(
+        signUpError.message.toLowerCase().includes("already registered")
+          ? "Este correo ya tiene una cuenta. Inicia sesión."
+          : signUpError.message
+      );
       return;
     }
 
-    window.location.href = isProvider ? "/proveedor/onboarding/negocio" : "/cliente";
+    if (!signUpData.user?.identities || signUpData.user.identities.length === 0) {
+      setLoading(false);
+      setError("Este correo ya tiene una cuenta. Inicia sesión.");
+      return;
+    }
+
+    // Set up profile + providers row via admin API
+    if (signUpData.user?.id) {
+      await fetch("/api/auth/complete-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id:   signUpData.user.id,
+          full_name: form.nombre,
+          role,
+          phone:     form.telefono || null,
+        }),
+      });
+    }
+
+    setLoading(false);
+    setSubstep("verify");
   };
 
   // ── Password strength ──────────────────────────────────────────
@@ -341,8 +320,8 @@ function RegistroForm() {
         </>
       )}
 
-      {/* ══ PANTALLA: Código de verificación ══════════════════ */}
-      {substep === "otp" && (
+      {/* ══ PANTALLA: Revisa tu correo ════════════════════════ */}
+      {substep === "verify" && (
         <div className="flex flex-col items-center text-center w-full max-w-[400px]">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
@@ -351,54 +330,21 @@ function RegistroForm() {
             <MailCheck size={32} style={{ color: accent }} strokeWidth={1.8} />
           </div>
           <h1 className="text-gray-900 text-[24px] font-black tracking-[-0.4px] mb-2">
-            Verifica tu correo
+            Revisa tu correo
           </h1>
           <p className="text-gray-500 text-[14px] leading-relaxed mb-1">
-            Te enviamos un código de 6 dígitos a
+            Te enviamos un enlace de confirmación a
           </p>
           <p className="text-gray-900 font-bold text-[14px] mb-6">{email}</p>
-
-          {error && (
-            <div className="w-full mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[13px]">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleVerifyOtp} className="w-full flex flex-col gap-3">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="\d{6}"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "")); setError(null); }}
-              placeholder="000000"
-              className="w-full text-center py-4 rounded-xl border border-gray-200 text-[32px] font-black tracking-[12px] outline-none"
-              style={{ fontFamily: "monospace" }}
-              onFocus={(e) => (e.target.style.borderColor = accent)}
-              onBlur={(e)  => (e.target.style.borderColor = "#e5e7eb")}
-              autoFocus
-            />
-            <button
-              type="submit"
-              disabled={loading || otp.length !== 6}
-              className="w-full rounded-xl py-3.5 text-white text-[15px] font-bold cursor-pointer border-none"
-              style={{
-                background: isProvider
-                  ? "linear-gradient(135deg,#f59e0b 0%,#f39e10 55%,#e88e00 100%)"
-                  : "linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)",
-                opacity: (loading || otp.length !== 6) ? 0.6 : 1,
-              }}
-            >
-              {loading ? "Verificando..." : "Confirmar cuenta"}
-            </button>
-          </form>
-
-          <p className="text-gray-400 text-[12px] mt-6">
-            Revisa también tu carpeta de spam.{" "}
+          <p className="text-gray-400 text-[13px] leading-relaxed">
+            Haz clic en el enlace del correo para activar tu cuenta. Revisa también tu carpeta de spam.
+          </p>
+          <div className="mt-8 w-full h-px bg-gray-100" />
+          <p className="text-gray-400 text-[12px] mt-5">
+            ¿Correo equivocado?{" "}
             <button
               type="button"
-              onClick={() => { setSubstep("email"); setEmail(""); setOtp(""); setError(null); }}
+              onClick={() => { setSubstep("email"); setEmail(""); setError(null); }}
               className="font-semibold underline bg-transparent border-none cursor-pointer p-0"
               style={{ color: accent }}
             >
