@@ -179,7 +179,15 @@ function RegistroForm() {
       return;
     }
 
-    const userId = signUpData.user?.id;
+    // Supabase returns an existing user with empty identities instead of an
+    // error when email confirmations are enabled and the address is already taken.
+    if (!signUpData.user?.identities || signUpData.user.identities.length === 0) {
+      setLoading(false);
+      setError("Este correo ya tiene una cuenta. Inicia sesión.");
+      return;
+    }
+
+    const userId = signUpData.user.id;
     if (!userId) {
       setLoading(false);
       setError("Error inesperado al crear la cuenta.");
