@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
-  const { email, full_name, password, role, phone } = await request.json();
+  // user_id is provided by the browser after calling supabase.auth.signUp()
+  const { user_id, full_name, role, phone } = await request.json();
 
-  if (!email || !full_name || !password || !role) {
+  if (!user_id || !full_name || !role) {
     return NextResponse.json({ error: "Datos incompletos." }, { status: 400 });
   }
 
@@ -14,34 +15,20 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Create user directly — bypasses email confirmation entirely
-  const { data: { user }, error: createError } = await adminSupabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name, role, ...(phone ? { phone } : {}) },
-  });
-
-  if (createError || !user) {
-    console.error("[complete-signup] createUser error:", createError?.message);
-    const msg = createError?.message?.includes("already registered")
-      ? "Este correo ya tiene una cuenta. Inicia sesión."
-      : (createError?.message ?? "Error al crear la cuenta.");
-    return NextResponse.json({ error: msg }, { status: 400 });
-  }
-
-  // Update profile row (created by handle_new_user trigger)
+  // Upsert profile (the handle_new_user trigger may not have run yet)
   await adminSupabase
     .from("profiles")
-    .update({ full_name, role, phone: phone ?? null })
-    .eq("id", user.id);
+    .upsert(
+      { id: user_id, full_name, role, phone: phone ?? null },
+      { onConflict: "id" }
+    );
 
   // Create providers row for provider role
   if (role === "provider") {
     await adminSupabase
       .from("providers")
       .upsert(
-        { user_id: user.id, business_name: "", status: "draft" },
+        { user_id, business_name: "", status: "draft" },
         { onConflict: "user_id", ignoreDuplicates: true }
       );
   }

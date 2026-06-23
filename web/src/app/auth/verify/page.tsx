@@ -30,10 +30,30 @@ function VerifyContent() {
       await new Promise((r) => setTimeout(r, 300));
 
       const { data: { user } } = await sb.auth.getUser();
-      if (user) {
-        router.replace(next);
-      } else {
+      if (!user) {
         setStatus("error");
+        return;
+      }
+
+      // If a specific redirect was requested, honour it
+      if (next && next !== "/") {
+        router.replace(next);
+        return;
+      }
+
+      // Otherwise redirect based on the user's role
+      const { data: profile } = await sb
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role === "provider") {
+        router.replace("/proveedor/onboarding/negocio");
+      } else if (profile?.role === "client") {
+        router.replace("/cliente");
+      } else {
+        router.replace("/");
       }
     }
 

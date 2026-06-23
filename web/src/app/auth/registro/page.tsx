@@ -2,10 +2,10 @@
 
 import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Eye, EyeOff, User, Mail, Lock, Phone,
-  ChevronLeft, Check, ShieldCheck,
+  ChevronLeft, Check, ShieldCheck, MailCheck,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
@@ -96,11 +96,10 @@ function InputField({
 
 // ── Main form ───────────────────────────────────────────────────
 
-type Substep = "email" | "profile";
+type Substep = "email" | "profile" | "verify";
 
 function RegistroForm() {
   const searchParams = useSearchParams();
-  const router       = useRouter();
 
   const isProvider = searchParams.get("tipo") === "proveedor";
   const accent     = isProvider ? "#f39e10" : "#3b82f6";
@@ -156,40 +155,51 @@ function RegistroForm() {
     setError(null);
     setLoading(true);
 
-    const res = await fetch("/api/auth/complete-signup", {
+    const role = isProvider ? "provider" : "client";
+
+    // Step 1: Register via Supabase client in the browser so the PKCE code
+    // verifier is stored in cookies and the confirmation email is sent via
+    // whatever SMTP is configured (Brevo).
+    const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp({
+      email,
+      password: form.password,
+      options: {
+        data: { full_name: form.nombre, role },
+        emailRedirectTo: `${window.location.origin}/auth/verify`,
+      },
+    });
+
+    if (signUpError) {
+      setLoading(false);
+      setError(
+        signUpError.message.toLowerCase().includes("already registered")
+          ? "Este correo ya tiene una cuenta. Inicia sesión."
+          : signUpError.message
+      );
+      return;
+    }
+
+    const userId = signUpData.user?.id;
+    if (!userId) {
+      setLoading(false);
+      setError("Error inesperado al crear la cuenta.");
+      return;
+    }
+
+    // Step 2: Set up profile + providers row via admin API.
+    await fetch("/api/auth/complete-signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email,
+        user_id:   userId,
         full_name: form.nombre,
-        password:  form.password,
-        role:      isProvider ? "provider" : "client",
+        role,
         phone:     form.telefono || null,
       }),
     });
 
-    if (!res.ok) {
-      setLoading(false);
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Error al crear la cuenta.");
-      return;
-    }
-
-    // Sign in client-side so the browser session cookie is set correctly
-    const { error: signInError } = await getSupabase().auth.signInWithPassword({
-      email,
-      password: form.password,
-    });
-
     setLoading(false);
-
-    if (signInError) {
-      setError(`Cuenta creada pero no se pudo iniciar sesión: ${signInError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    router.push(isProvider ? "/proveedor/onboarding/negocio" : "/cliente");
+    setSubstep("verify");
   };
 
   // ── Password strength ──────────────────────────────────────────
@@ -308,6 +318,41 @@ function RegistroForm() {
             </Link>
           </p>
         </>
+      )}
+
+      {/* ══ PANTALLA: Verifica tu correo ══════════════════════ */}
+      {substep === "verify" && (
+        <div className="flex flex-col items-center text-center max-w-[400px]">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
+            style={{ background: `${accent}1a` }}
+          >
+            <MailCheck size={32} style={{ color: accent }} strokeWidth={1.8} />
+          </div>
+          <h1 className="text-gray-900 text-[24px] font-black tracking-[-0.4px] mb-2">
+            Revisa tu correo
+          </h1>
+          <p className="text-gray-500 text-[14px] leading-relaxed mb-1">
+            Te enviamos un enlace de confirmación a
+          </p>
+          <p className="text-gray-900 font-bold text-[14px] mb-6">{email}</p>
+          <p className="text-gray-400 text-[13px] leading-relaxed">
+            Haz clic en el enlace del correo para activar tu cuenta y acceder a Eventia.
+            Revisa también tu carpeta de spam.
+          </p>
+          <div className="mt-8 w-full h-px bg-gray-100" />
+          <p className="text-gray-400 text-[12px] mt-5">
+            ¿Correo equivocado?{" "}
+            <button
+              type="button"
+              onClick={() => { setSubstep("email"); setEmail(""); setError(null); }}
+              className="font-semibold underline bg-transparent border-none cursor-pointer p-0"
+              style={{ color: accent }}
+            >
+              Volver al inicio
+            </button>
+          </p>
+        </div>
       )}
 
       {/* ══ SUB-PASO 2: Nombre y contraseña ═══════════════════ */}
