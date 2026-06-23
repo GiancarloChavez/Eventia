@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
+import { ChatProvider } from "@/components/chat/ChatProvider";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="es" className={`${outfit.variable} h-full antialiased`}>
       <body className="min-h-full bg-[#f4f5f7]">
         <AppShell>{children}</AppShell>
+        <ChatProvider />
       </body>
     </html>
   );
