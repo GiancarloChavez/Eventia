@@ -39,6 +39,17 @@ interface ProviderData {
 
 interface ProfileData { full_name: string; email: string; }
 
+interface BookingRequest {
+  id: string;
+  event_date: string;
+  status: string;
+  quoted_price: number | null;
+  created_at: string;
+  notes: string | null;
+  services: { title: string } | null;
+  profiles: { full_name: string | null; email: string } | null;
+}
+
 // ── Constants ────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<number, string> = {
@@ -86,7 +97,9 @@ export default function ProviderDashboard() {
   const [ready,    setReady]    = useState(false);
   const [provider, setProvider] = useState<ProviderData | null>(null);
   const [profile,  setProfile]  = useState<ProfileData | null>(null);
-  const [services, setServices] = useState<ServiceData[]>([]);
+  const [services,  setServices]  = useState<ServiceData[]>([]);
+  const [requests,  setRequests]  = useState<BookingRequest[]>([]);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // ── Edit state ────────────────────────────────────────────
   const [editing,         setEditing]         = useState<ServiceData | null>(null);
@@ -106,6 +119,25 @@ export default function ProviderDashboard() {
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // ── Load data ─────────────────────────────────────────────
+
+  const loadRequests = async (providerId: string) => {
+    const supabase = getSupabase();
+    const { data } = await supabase
+      .from("bookings")
+      .select(`
+        id, event_date, status, quoted_price, created_at, notes,
+        services ( title ),
+        profiles!bookings_client_id_fkey ( full_name, email )
+      `)
+      .in("service_id", await supabase
+        .from("services")
+        .select("id")
+        .eq("provider_id", providerId)
+        .then(({ data: svcs }) => (svcs ?? []).map((s: { id: string }) => s.id))
+      )
+      .order("created_at", { ascending: false });
+    setRequests((data as unknown as BookingRequest[]) ?? []);
+  };
 
   const loadServices = async (providerId: string) => {
     const supabase = getSupabase();
@@ -156,7 +188,7 @@ export default function ProviderDashboard() {
 
       setProvider(prov);
       setProfile(prof);
-      await loadServices(prov.id);
+      await Promise.all([loadServices(prov.id), loadRequests(prov.id)]);
       setReady(true);
     };
     load();
@@ -449,7 +481,83 @@ export default function ProviderDashboard() {
             )
         )}
 
-        {active === "solicitudes" && <EmptyState icon={FileText}   title="Sin solicitudes aún"         subtitle="Cuando un cliente reserve tu servicio, aparecerá aquí." />}
+        {active === "solicitudes" && (
+          requests.length === 0
+            ? <EmptyState icon={FileText} title="Sin solicitudes aún" subtitle="Cuando un cliente reserve tu servicio, aparecerá aquí." />
+            : (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h3 className="text-gray-900 text-[16px] font-bold">Solicitudes de reserva</h3>
+                  <p className="text-gray-400 text-[13px] mt-0.5">{requests.length} solicitud{requests.length !== 1 ? "es" : ""}</p>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {requests.map((req) => {
+                    const clientName = req.profiles?.full_name ?? req.profiles?.email ?? "Cliente";
+                    const date = new Date(req.event_date + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
+                    const isPending = req.status === "pending";
+                    return (
+                      <div key={req.id} className="px-6 py-4 flex items-center gap-4">
+                        {/* Avatar */}
+                        <div className="w-10 h-10 rounded-full bg-[rgba(59,130,246,0.08)] border border-[rgba(59,130,246,0.2)] flex items-center justify-center shrink-0">
+                          <span className="text-[#3b82f6] font-black text-[14px]">{clientName[0]?.toUpperCase()}</span>
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-gray-900 text-[14px] font-bold truncate">{clientName}</p>
+                          <p className="text-gray-500 text-[12px]">
+                            {req.services?.title ?? "Servicio"} · {date}
+                          </p>
+                          {req.quoted_price != null && (
+                            <p className="text-[#f39e10] text-[12px] font-semibold mt-0.5">S/ {req.quoted_price.toLocaleString("es-PE")}</p>
+                          )}
+                          {req.notes && <p className="text-gray-400 text-[11px] mt-0.5 truncate">{req.notes}</p>}
+                        </div>
+                        {/* Status / actions */}
+                        {isPending ? (
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              disabled={updatingId === req.id}
+                              onClick={async () => {
+                                setUpdatingId(req.id);
+                                await getSupabase().from("bookings").update({ status: "confirmed" }).eq("id", req.id);
+                                await loadRequests(provider!.id);
+                                setUpdatingId(null);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.25)] text-green-700 text-[12px] font-bold cursor-pointer hover:bg-[rgba(34,197,94,0.15)] transition-colors"
+                            >
+                              Aceptar
+                            </button>
+                            <button
+                              disabled={updatingId === req.id}
+                              onClick={async () => {
+                                setUpdatingId(req.id);
+                                await getSupabase().from("bookings").update({ status: "cancelled" }).eq("id", req.id);
+                                await loadRequests(provider!.id);
+                                setUpdatingId(null);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.2)] text-red-600 text-[12px] font-bold cursor-pointer hover:bg-[rgba(239,68,68,0.12)] transition-colors"
+                            >
+                              Rechazar
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className="px-3 py-1 rounded-full text-[12px] font-bold shrink-0"
+                            style={{
+                              color:      req.status === "confirmed" ? "#15803d" : "#6b7280",
+                              background: req.status === "confirmed" ? "rgba(21,128,61,0.08)" : "rgba(107,114,128,0.08)",
+                            }}
+                          >
+                            {req.status === "confirmed" ? "Aceptada" : "Rechazada"}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )
+        )}
         {active === "contratos"   && <EmptyState icon={Calendar}   title="Sin contratos aún"           subtitle="Los contratos generados por reservas confirmadas aparecerán aquí." />}
         {active === "ingresos"    && <EmptyState icon={DollarSign} title="Sin ingresos registrados"    subtitle="Tus ganancias se mostrarán aquí una vez que completes tu primer servicio." />}
 

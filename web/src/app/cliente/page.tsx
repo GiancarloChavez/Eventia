@@ -14,6 +14,28 @@ interface Profile {
   role: string;
 }
 
+interface Booking {
+  id: string;
+  event_date: string;
+  status: string;
+  quoted_price: number | null;
+  created_at: string;
+  services: {
+    title: string;
+    base_price: number | null;
+    service_categories: { name: string } | null;
+    providers: { business_name: string } | null;
+    service_images: { url: string }[];
+  } | null;
+}
+
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  pending:   { label: "Pendiente",  color: "#b45309", bg: "rgba(180,83,9,0.08)"   },
+  confirmed: { label: "Confirmada", color: "#1d4ed8", bg: "rgba(29,78,216,0.08)"  },
+  completed: { label: "Completada", color: "#15803d", bg: "rgba(21,128,61,0.08)"  },
+  cancelled: { label: "Cancelada",  color: "#6b7280", bg: "rgba(107,114,128,0.08)" },
+};
+
 const SIDEBAR_ITEMS = [
   { id: "reservas",  label: "Mis reservas",  Icon: Calendar },
   { id: "contratos", label: "Mis contratos", Icon: FileText },
@@ -29,10 +51,11 @@ const TITLES: Record<string, string> = {
 };
 
 export default function ClientDashboard() {
-  const router  = useRouter();
-  const [active,  setActive]  = useState("reservas");
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const router   = useRouter();
+  const [active,   setActive]   = useState("reservas");
+  const [profile,  setProfile]  = useState<Profile | null>(null);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -45,19 +68,30 @@ export default function ClientDashboard() {
         return;
       }
 
-      const { data: prof } = await sb
-        .from("profiles")
-        .select("full_name, phone, role")
-        .eq("id", user.id)
-        .single();
+      const [profResult, bookResult] = await Promise.all([
+        sb.from("profiles").select("full_name, phone, role").eq("id", user.id).single(),
+        sb.from("bookings")
+          .select(`
+            id, event_date, status, quoted_price, created_at,
+            services (
+              title, base_price,
+              service_categories ( name ),
+              providers ( business_name ),
+              service_images ( url )
+            )
+          `)
+          .eq("client_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
 
       setProfile({
-        full_name: prof?.full_name ?? null,
+        full_name: profResult.data?.full_name ?? null,
         email:     user.email ?? "",
-        phone:     prof?.phone ?? null,
-        role:      prof?.role ?? "client",
+        phone:     profResult.data?.phone ?? null,
+        role:      profResult.data?.role ?? "client",
       });
 
+      setBookings((bookResult.data as unknown as Booking[]) ?? []);
       setLoading(false);
     }
 
@@ -74,6 +108,10 @@ export default function ClientDashboard() {
 
   const displayName = profile?.full_name ?? profile?.email ?? "Usuario";
   const initial     = displayName[0]?.toUpperCase() ?? "U";
+
+  const totalInvested = bookings.reduce((acc, b) => acc + (b.quoted_price ?? 0), 0);
+  const activeCount   = bookings.filter((b) => b.status === "confirmed").length;
+  const pendingCount  = bookings.filter((b) => b.status === "pending").length;
 
   return (
     <div className="bg-[#f4f5f7] min-h-screen px-6 pb-6 pt-[96px] flex gap-6">
@@ -121,10 +159,10 @@ export default function ClientDashboard() {
           <div>
             <div className="flex gap-3.5 mb-6">
               {[
-                { label: "Total reservas",  value: 0,        sub: "Historial completo" },
-                { label: "Activas",         value: 0,        sub: "En proceso",       color: "#3b82f6" },
-                { label: "Pendientes",      value: 0,        sub: "Por confirmar",    color: "#b45309" },
-                { label: "Total invertido", value: formatPrice(0), sub: "Soles peruanos" },
+                { label: "Total reservas",  value: bookings.length,       sub: "Historial completo" },
+                { label: "Activas",         value: activeCount,           sub: "En proceso",       color: "#3b82f6" },
+                { label: "Pendientes",      value: pendingCount,          sub: "Por confirmar",    color: "#b45309" },
+                { label: "Total invertido", value: formatPrice(totalInvested), sub: "Soles peruanos" },
               ].map((stat) => (
                 <div key={stat.label} className="bg-white border border-gray-200 rounded-xl p-5 flex-1">
                   <div className="text-gray-500 text-[12px] uppercase tracking-[0.6px] font-semibold mb-2.5">{stat.label}</div>
@@ -141,16 +179,68 @@ export default function ClientDashboard() {
                   + Nueva reserva
                 </Link>
               </div>
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <Calendar size={24} className="text-gray-400" />
+
+              {bookings.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                    <Calendar size={24} className="text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-[15px] font-semibold mb-1">Aún no tienes reservas</p>
+                  <p className="text-gray-400 text-[13px] mb-6">Explora el catálogo y reserva tu primer servicio</p>
+                  <Link href="/catalogo" className="bg-[#3b82f6] text-white rounded-xl px-5 py-2.5 text-[14px] font-bold hover:bg-[#2563eb] transition-colors">
+                    Explorar servicios
+                  </Link>
                 </div>
-                <p className="text-gray-500 text-[15px] font-semibold mb-1">Aún no tienes reservas</p>
-                <p className="text-gray-400 text-[13px] mb-6">Explora el catálogo y reserva tu primer servicio</p>
-                <Link href="/catalogo" className="bg-[#3b82f6] text-white rounded-xl px-5 py-2.5 text-[14px] font-bold hover:bg-[#2563eb] transition-colors">
-                  Explorar servicios
-                </Link>
-              </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {bookings.map((b) => {
+                    const svc    = b.services;
+                    const thumb  = svc?.service_images?.[0]?.url ?? null;
+                    const status = STATUS_LABELS[b.status] ?? STATUS_LABELS.pending;
+                    const price  = b.quoted_price ?? svc?.base_price ?? 0;
+                    const date   = new Date(b.event_date + "T00:00:00").toLocaleDateString("es-PE", {
+                      day: "numeric", month: "long", year: "numeric",
+                    });
+
+                    return (
+                      <div key={b.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
+                        {/* Thumbnail */}
+                        <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+                          {thumb ? (
+                            <img src={thumb} alt={svc?.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Calendar size={20} className="text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-gray-900 text-[14px] font-bold truncate">{svc?.title ?? "Servicio"}</p>
+                          <p className="text-gray-500 text-[12px] mt-0.5">
+                            {svc?.service_categories?.name ?? "—"} · {svc?.providers?.business_name ?? "—"}
+                          </p>
+                          <p className="text-gray-400 text-[12px] mt-0.5">{date}</p>
+                        </div>
+
+                        {/* Price */}
+                        <div className="text-right shrink-0">
+                          <p className="text-gray-900 text-[14px] font-black">{formatPrice(price)}</p>
+                        </div>
+
+                        {/* Status badge */}
+                        <div
+                          className="px-3 py-1 rounded-full text-[12px] font-bold shrink-0"
+                          style={{ color: status.color, background: status.bg }}
+                        >
+                          {status.label}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

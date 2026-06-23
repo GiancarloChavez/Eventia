@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import { Home, Building2, Camera, Music, Sparkles, Briefcase, LogOut, LayoutDashboard } from "lucide-react";
+import { Home, Building2, Camera, Music, Sparkles, Briefcase, LogOut, LayoutDashboard, ShoppingBag } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
 const NAV_ITEMS = [
@@ -29,7 +29,8 @@ export function Navbar() {
   const searchParams = useSearchParams();
   const router      = useRouter();
   const [scrolled,     setScrolled]     = useState(false);
-  const [user,         setUser]         = useState<{ name: string; email: string; role: string } | null>(null);
+  const [user,         setUser]         = useState<{ id: string; name: string; email: string; role: string } | null>(null);
+  const [cartCount,    setCartCount]    = useState(0);
   const [menuOpen,     setMenuOpen]     = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -47,26 +48,21 @@ export function Navbar() {
   useEffect(() => {
     const supabase = getSupabase();
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setUser({
-          name:  session.user.user_metadata?.full_name ?? "",
-          email: session.user.email ?? "",
-          role:  session.user.user_metadata?.role ?? "client",
-        });
+    async function syncUser(session: { user: { id: string; email?: string; user_metadata?: Record<string, string> } } | null) {
+      if (!session) { setUser(null); setCartCount(0); return; }
+      const u = session.user;
+      const role = u.user_metadata?.role ?? "client";
+      setUser({ id: u.id, name: u.user_metadata?.full_name ?? "", email: u.email ?? "", role });
+      if (role !== "provider") {
+        const { count } = await supabase.from("bookings").select("*", { count: "exact", head: true }).eq("client_id", u.id);
+        setCartCount(count ?? 0);
       }
-    });
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => syncUser(session));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (session) {
-        setUser({
-          name:  session.user.user_metadata?.full_name ?? "",
-          email: session.user.email ?? "",
-          role:  session.user.user_metadata?.role ?? "client",
-        });
-      } else {
-        setUser(null);
-      }
+      syncUser(session);
     });
 
     return () => subscription.unsubscribe();
@@ -173,6 +169,25 @@ export function Navbar() {
         <div className="flex items-center gap-1 shrink-0 pl-2">
           {user ? (
             /* ── Authenticated ── */
+            <>
+            {user.role !== "provider" && (
+              <Link
+                href="/cliente"
+                className="relative flex items-center justify-center w-9 h-9 rounded-full mr-1"
+                style={{ color: heroMode ? "rgba(255,255,255,0.88)" : "#6b7280" }}
+                title="Mis reservas"
+              >
+                <ShoppingBag size={19} strokeWidth={1.7} />
+                {cartCount > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-white font-bold"
+                    style={{ fontSize: 10, background: "#f39e10", padding: "0 3px" }}
+                  >
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </Link>
+            )}
             <div ref={menuRef} className="relative">
               <button
                 onClick={() => setMenuOpen((v) => !v)}
@@ -227,6 +242,7 @@ export function Navbar() {
                 </div>
               )}
             </div>
+            </>
           ) : (
             /* ── Guest ── */
             <>

@@ -21,6 +21,8 @@ export default function DetailPage() {
   const [activeImg, setActiveImg] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [booking, setBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const today = new Date().toISOString().split("T")[0];
@@ -82,38 +84,6 @@ export default function DetailPage() {
   const providerName = service.provider?.business_name ?? "Proveedor";
   const providerLogo = service.provider?.logo_url ?? null;
 
-  if (showConfirm) {
-    return (
-      <div className="bg-[#f4f5f7] min-h-screen flex items-center justify-center">
-        <div className="bg-white border border-gray-200 rounded-2xl p-14 text-center max-w-[440px]" style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.1)" }}>
-          <div className="w-20 h-20 rounded-full bg-[rgba(243,158,16,0.08)] border border-[rgba(243,158,16,0.22)] flex items-center justify-center mx-auto mb-6">
-            <Check size={36} className="text-[#f39e10]" />
-          </div>
-          <h2 className="text-gray-900 text-[24px] font-black mb-3">¡Reserva enviada!</h2>
-          <p className="text-gray-500 text-[15px] leading-relaxed mb-1.5">
-            Tu solicitud para <strong className="text-gray-900">{service.title}</strong> fue enviada exitosamente.
-          </p>
-          <p className="text-gray-500 text-[14px] mb-7">
-            El proveedor confirmará en las próximas <strong className="text-[#f39e10]">24 horas</strong>.
-          </p>
-          <div className="flex flex-col gap-2.5">
-            <button
-              onClick={() => router.push("/cliente")}
-              className="w-full bg-[#f39e10] border-none text-white rounded-xl py-3 text-[15px] font-bold cursor-pointer hover:bg-[#d4870e] transition-colors"
-            >
-              Ver mis reservas
-            </button>
-            <button
-              onClick={() => setShowConfirm(false)}
-              className="w-full bg-none border border-gray-200 text-gray-500 rounded-xl py-3 text-[14px] cursor-pointer hover:bg-gray-50 transition-colors"
-            >
-              Volver al servicio
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-[#f4f5f7] min-h-screen pt-[72px]">
@@ -273,16 +243,56 @@ export default function DetailPage() {
                   Disponibilidad: <strong className="text-gray-900 ml-0.5">Consultar con el proveedor</strong>
                 </div>
 
+                {/* Toast de éxito */}
+                {showConfirm && (
+                  <div className="flex items-center gap-2.5 bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.28)] rounded-xl px-4 py-3 mb-3">
+                    <Check size={15} className="text-green-600 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-green-800 text-[13px] font-semibold">Guardado en tus reservas</p>
+                      <p className="text-green-700 text-[11px]">Puedes verlo en tu lista de reservas</p>
+                    </div>
+                    <Link href="/cliente" className="text-[#f39e10] text-[12px] font-bold whitespace-nowrap hover:underline">
+                      Ver lista →
+                    </Link>
+                  </div>
+                )}
+
+                {bookingError && (
+                  <p className="text-red-500 text-[12px] mb-2">{bookingError}</p>
+                )}
+
                 <button
-                  onClick={() => selectedDate && setShowConfirm(true)}
+                  disabled={!selectedDate || booking || showConfirm}
+                  onClick={async () => {
+                    if (!selectedDate || !service) return;
+                    setBooking(true);
+                    setBookingError(null);
+                    const res = await fetch("/api/bookings", {
+                      method:  "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body:    JSON.stringify({
+                        service_id:   service.id,
+                        event_date:   selectedDate,
+                        quoted_price: service.base_price ?? null,
+                      }),
+                    });
+                    setBooking(false);
+                    if (!res.ok) {
+                      const body = await res.json().catch(() => ({}));
+                      if (res.status === 401) { router.push("/auth/login"); return; }
+                      setBookingError(body.error || "Error al guardar la reserva.");
+                      return;
+                    }
+                    setShowConfirm(true);
+                  }}
                   className="w-full border-none rounded-xl py-3.5 text-[15px] font-bold mb-2.5 transition-colors"
                   style={{
-                    background: selectedDate ? "#f39e10" : "#f3f4f6",
-                    color: selectedDate ? "#fff" : "#9ca3af",
-                    cursor: selectedDate ? "pointer" : "default",
+                    background: showConfirm ? "#e5e7eb" : selectedDate ? "#f39e10" : "#f3f4f6",
+                    color:      showConfirm ? "#9ca3af" : selectedDate ? "#fff" : "#9ca3af",
+                    cursor:     selectedDate && !booking && !showConfirm ? "pointer" : "default",
                   }}
                 >
-                  Reservar ahora
+                  {booking ? "Guardando..." : showConfirm ? "Añadido a reservas" : "Guardar en mis reservas"}
                 </button>
 
                 <button className="w-full bg-none border border-gray-200 text-gray-700 rounded-xl py-3 text-[14px] font-semibold cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
