@@ -48,7 +48,7 @@ interface BookingRequest {
   created_at: string;
   notes: string | null;
   services: { title: string } | null;
-  profiles: { full_name: string | null; email: string | null } | null;
+  profiles: { full_name: string | null; phone: string | null } | null;
 }
 
 // ── Constants ────────────────────────────────────────────────
@@ -496,7 +496,7 @@ export default function ProviderDashboard() {
                 </div>
                 <div className="divide-y divide-gray-100">
                   {requests.map((req) => {
-                    const clientName = req.profiles?.full_name ?? req.profiles?.email ?? "Cliente";
+                    const clientName = req.profiles?.full_name ?? "Cliente";
                     const date = new Date(req.event_date + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
                     const isPending = req.status === "pending";
                     return (

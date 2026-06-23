@@ -39,7 +39,7 @@ export async function GET() {
     .select(`
       id, event_date, status, quoted_price, created_at, notes,
       services ( title ),
-      profiles ( full_name, email )
+      profiles ( full_name, phone )
     `)
     .in("service_id", serviceIds)
     .order("created_at", { ascending: false });
