@@ -47,7 +47,7 @@ interface BookingRequest {
   created_at: string;
   notes: string | null;
   services: { title: string } | null;
-  profiles: { full_name: string | null; email: string } | null;
+  profiles: { full_name: string | null; email: string | null } | null;
 }
 
 // ── Constants ────────────────────────────────────────────────
@@ -120,23 +120,11 @@ export default function ProviderDashboard() {
 
   // ── Load data ─────────────────────────────────────────────
 
-  const loadRequests = async (providerId: string) => {
-    const supabase = getSupabase();
-    const { data } = await supabase
-      .from("bookings")
-      .select(`
-        id, event_date, status, quoted_price, created_at, notes,
-        services ( title ),
-        profiles!bookings_client_id_fkey ( full_name, email )
-      `)
-      .in("service_id", await supabase
-        .from("services")
-        .select("id")
-        .eq("provider_id", providerId)
-        .then(({ data: svcs }) => (svcs ?? []).map((s: { id: string }) => s.id))
-      )
-      .order("created_at", { ascending: false });
-    setRequests((data as unknown as BookingRequest[]) ?? []);
+  const loadRequests = async () => {
+    const res = await fetch("/api/provider/bookings");
+    if (!res.ok) return;
+    const { bookings } = await res.json();
+    setRequests((bookings as BookingRequest[]) ?? []);
   };
 
   const loadServices = async (providerId: string) => {
@@ -188,7 +176,7 @@ export default function ProviderDashboard() {
 
       setProvider(prov);
       setProfile(prof);
-      await Promise.all([loadServices(prov.id), loadRequests(prov.id)]);
+      await Promise.all([loadServices(prov.id), loadRequests()]);
       setReady(true);
     };
     load();
@@ -519,8 +507,12 @@ export default function ProviderDashboard() {
                               disabled={updatingId === req.id}
                               onClick={async () => {
                                 setUpdatingId(req.id);
-                                await getSupabase().from("bookings").update({ status: "confirmed" }).eq("id", req.id);
-                                await loadRequests(provider!.id);
+                                await fetch("/api/provider/bookings", {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ id: req.id, status: "confirmed" }),
+                                });
+                                await loadRequests();
                                 setUpdatingId(null);
                               }}
                               className="px-3 py-1.5 rounded-lg bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.25)] text-green-700 text-[12px] font-bold cursor-pointer hover:bg-[rgba(34,197,94,0.15)] transition-colors"
@@ -531,8 +523,12 @@ export default function ProviderDashboard() {
                               disabled={updatingId === req.id}
                               onClick={async () => {
                                 setUpdatingId(req.id);
-                                await getSupabase().from("bookings").update({ status: "cancelled" }).eq("id", req.id);
-                                await loadRequests(provider!.id);
+                                await fetch("/api/provider/bookings", {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ id: req.id, status: "cancelled" }),
+                                });
+                                await loadRequests();
                                 setUpdatingId(null);
                               }}
                               className="px-3 py-1.5 rounded-lg bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.2)] text-red-600 text-[12px] font-bold cursor-pointer hover:bg-[rgba(239,68,68,0.12)] transition-colors"
