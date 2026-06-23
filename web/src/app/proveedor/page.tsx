@@ -7,6 +7,7 @@ import {
   MapPin, Clock, Package, X, Plus, ImageIcon, Save, Pencil, Camera,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
+import { AddServiceDialog } from "@/components/provider/AddServiceDialog";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -115,6 +116,7 @@ export default function ProviderDashboard() {
   const [saving,          setSaving]          = useState(false);
   const [saveError,       setSaveError]       = useState<string | null>(null);
   const [logoUploading,   setLogoUploading]   = useState(false);
+  const [addingService,   setAddingService]   = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -414,11 +416,25 @@ export default function ProviderDashboard() {
 
         {/* Mis servicios */}
         {active === "servicios" && (
-          services.length === 0
-            ? <EmptyState icon={Package} title="Sin servicios aún" subtitle="Agrega tu primer servicio para aparecer en el catálogo." />
-            : (
-              <div className="flex flex-col gap-3">
-                {services.map((svc) => (
+          <div className="flex flex-col gap-3">
+            {/* Add service button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setAddingService(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border-none text-white text-[13px] font-bold cursor-pointer transition-opacity hover:opacity-90"
+                style={{
+                  background: "linear-gradient(135deg, #f59e0b 0%, #f39e10 55%, #e88e00 100%)",
+                  boxShadow: "0 2px 12px rgba(243,158,16,0.35)",
+                }}
+              >
+                <Plus size={15} />
+                Añadir servicio
+              </button>
+            </div>
+
+            {services.length === 0
+              ? <EmptyState icon={Package} title="Sin servicios aún" subtitle="Agrega tu primer servicio para aparecer en el catálogo." />
+              : services.map((svc) => (
                   <div key={svc.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                     {/* Cover photo */}
                     {svc.images.length > 0 && (
@@ -464,9 +480,9 @@ export default function ProviderDashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )
+                ))
+            }
+          </div>
         )}
 
         {active === "solicitudes" && (
@@ -628,6 +644,17 @@ export default function ProviderDashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Add service dialog ───────────────────────────── */}
+      {provider && (
+        <AddServiceDialog
+          open={addingService}
+          onClose={() => setAddingService(false)}
+          providerId={provider.id}
+          categoryId={provider.category_id}
+          onSuccess={async () => { await loadServices(provider.id); }}
+        />
+      )}
 
       {/* ── Edit slide-over ───────────────────────────────── */}
       {editing && (
