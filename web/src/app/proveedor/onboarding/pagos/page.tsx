@@ -68,8 +68,9 @@ export default function PagosPage() {
   const cardRef       = useRef<StripeCardElement | null>(null);
   const mountedRef    = useRef(false);
 
-  const [prefilling,    setPrefilling]    = useState(true);
-  const [providerId,    setProviderId]    = useState<string | null>(null);
+  const [prefilling,      setPrefilling]      = useState(true);
+  const [providerId,      setProviderId]      = useState<string | null>(null);
+  const [alreadyOnboarded, setAlreadyOnboarded] = useState(false);
   const [clientSecret,  setClientSecret]  = useState<string | null>(null);
   const [cardReady,     setCardReady]     = useState(false);
   const [cardMountFail, setCardMountFail] = useState(false);
@@ -89,13 +90,18 @@ export default function PagosPage() {
 
       const { data: provider } = await supabase
         .from("providers")
-        .select("id, onboarding_step")
+        .select("id, onboarding_step, stripe_payment_method_id")
         .eq("user_id", session.user.id)
         .single();
 
       if (!provider) { router.replace("/auth/registro?tipo=proveedor"); return; }
-      if (provider.onboarding_step >= 4) { router.replace("/proveedor"); return; }
+      // Redirect only if onboarding is done AND the card is already saved
+      if (provider.onboarding_step >= 4 && provider.stripe_payment_method_id) {
+        router.replace("/proveedor");
+        return;
+      }
 
+      if (provider.onboarding_step >= 4) setAlreadyOnboarded(true);
       setProviderId(provider.id);
 
       const res  = await fetch("/api/stripe/setup-intent", { method: "POST" });
@@ -165,7 +171,7 @@ export default function PagosPage() {
       .from("providers")
       .update({ onboarding_step: 4 })
       .eq("id", providerId);
-    router.push("/proveedor/onboarding/revision");
+    router.push(alreadyOnboarded ? "/proveedor" : "/proveedor/onboarding/revision");
   };
 
   // ── Submit ───────────────────────────────────────────────
@@ -202,7 +208,7 @@ export default function PagosPage() {
     }
 
     setLoading(false);
-    router.push("/proveedor/onboarding/revision");
+    router.push(alreadyOnboarded ? "/proveedor" : "/proveedor/onboarding/revision");
   };
 
   // ── Render ───────────────────────────────────────────────

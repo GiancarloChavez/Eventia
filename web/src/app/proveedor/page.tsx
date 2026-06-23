@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Grid, FileText, Calendar, DollarSign, User,
-  MapPin, Clock, Package, X, Plus, ImageIcon, Save, Pencil, Camera,
+  MapPin, Clock, Package, X, Plus, ImageIcon, Save, Pencil, Camera, CreditCard, AlertTriangle,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { AddServiceDialog } from "@/components/provider/AddServiceDialog";
@@ -27,15 +27,18 @@ interface ServiceData {
 }
 
 interface ProviderData {
-  id:              string;
-  business_name:   string;
-  description:     string | null;
-  category_id:     number | null;
-  phone:           string | null;
-  city:            string | null;
-  status:          string;
-  onboarding_step: number;
-  logo_url:        string | null;
+  id:                       string;
+  business_name:            string;
+  description:              string | null;
+  category_id:              number | null;
+  phone:                    string | null;
+  city:                     string | null;
+  status:                   string;
+  onboarding_step:          number;
+  logo_url:                 string | null;
+  stripe_payment_method_id: string | null;
+  stripe_card_last4:        string | null;
+  stripe_card_brand:        string | null;
 }
 
 interface ProfileData { full_name: string; email: string; }
@@ -162,7 +165,7 @@ export default function ProviderDashboard() {
       if (!session) { router.replace("/auth"); return; }
 
       const [{ data: prov }, { data: prof }] = await Promise.all([
-        supabase.from("providers").select("id,business_name,description,category_id,phone,city,status,onboarding_step,logo_url").eq("user_id", session.user.id).single(),
+        supabase.from("providers").select("id,business_name,description,category_id,phone,city,status,onboarding_step,logo_url,stripe_payment_method_id,stripe_card_last4,stripe_card_brand").eq("user_id", session.user.id).single(),
         supabase.from("profiles").select("full_name,email").eq("id", session.user.id).single(),
       ]);
 
@@ -424,6 +427,30 @@ export default function ProviderDashboard() {
 
       {/* Main */}
       <div className="flex-1 min-w-0">
+
+        {/* Banner: sin tarjeta configurada */}
+        {!provider?.stripe_payment_method_id && (
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5 mb-5">
+            <AlertTriangle size={17} className="text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-amber-800 text-[13px] font-semibold leading-snug">
+                Configura tu tarjeta para recibir reservas
+              </p>
+              <p className="text-amber-700 text-[12px] mt-0.5 leading-relaxed">
+                Tus servicios no podrán ser reservados hasta que agregues un método de pago. Solo se usará cuando el cliente confirme una reserva.
+              </p>
+            </div>
+            <a
+              href="/proveedor/onboarding/pagos"
+              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-bold text-white border-none cursor-pointer whitespace-nowrap"
+              style={{ background: "#f39e10" }}
+            >
+              <CreditCard size={13} />
+              Agregar tarjeta
+            </a>
+          </div>
+        )}
+
         <div className="mb-6">
           <h1 className="text-gray-900 text-[24px] font-black mb-0.5">{TITLES[active]}</h1>
           <p className="text-gray-400 text-[13px]">{provider?.business_name}</p>
