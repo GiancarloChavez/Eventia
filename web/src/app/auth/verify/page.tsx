@@ -10,47 +10,51 @@ function VerifyContent() {
   const [status, setStatus] = useState<"loading" | "error">("loading");
 
   useEffect(() => {
-    const next = searchParams.get("next") ?? "/";
-    const sb = getSupabase();
+    const next      = searchParams.get("next") ?? "";
+    const code      = searchParams.get("code");
+    const tokenHash = searchParams.get("token_hash");
+    const type      = searchParams.get("type");
+    const sb        = getSupabase();
 
     async function handle() {
-      const code      = searchParams.get("code");
-      const tokenHash = searchParams.get("token_hash");
-      const type      = (searchParams.get("type") ?? "email") as "email" | "signup" | "recovery";
+      let ok = false;
 
       if (tokenHash) {
-        // Token-hash flow: works on any device, no PKCE verifier needed.
-        const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type });
-        if (error) {
-          console.error("[verify] verifyOtp:", error.message);
-          setStatus("error");
-          return;
+        // token_hash flow — works cross-device, no PKCE verifier needed.
+        // For initial signup, type="signup". For email change, type="email".
+        // Always try both so that any template variation works.
+        const primary   = (type === "signup" || type === "email") ? type : "signup";
+        const secondary = primary === "signup" ? "email" : "signup";
+        for (const t of [primary, secondary] as const) {
+          const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type: t });
+          if (!error) { ok = true; break; }
         }
       } else if (code) {
-        // PKCE flow: works when the link is opened in the same browser.
+        // PKCE flow — works when the same browser is used.
         const { error } = await sb.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.error("[verify] exchangeCodeForSession:", error.message);
-          setStatus("error");
-          return;
-        }
+        if (!error) ok = true;
       }
 
-      await new Promise((r) => setTimeout(r, 300));
+      if (!ok) {
+        // Wait briefly — the SDK may have set a session via the URL hash.
+        await new Promise((r) => setTimeout(r, 400));
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) ok = true;
+      }
 
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user) {
+      if (!ok) {
         setStatus("error");
         return;
       }
 
-      // If a specific redirect was requested, honour it
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) { setStatus("error"); return; }
+
       if (next && next !== "/") {
         router.replace(next);
         return;
       }
 
-      // Otherwise redirect based on the user's role
       const { data: profile } = await sb
         .from("profiles")
         .select("role")
@@ -73,10 +77,16 @@ function VerifyContent() {
   if (status === "error") {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6 text-center">
-        <p className="text-gray-700 font-semibold">El enlace expiró o ya fue usado.</p>
-        <a href="/auth/registro" className="text-[#f39e10] font-bold underline text-[14px]">
-          Volver al registro
-        </a>
+        <p className="text-gray-700 font-semibold text-[15px]">El enlace expiró o ya fue usado.</p>
+        <p className="text-gray-400 text-[13px]">Puedes registrarte de nuevo o iniciar sesión si ya verificaste tu correo.</p>
+        <div className="flex gap-3 mt-2">
+          <a href="/auth/registro" className="px-4 py-2 rounded-xl bg-[#f39e10] text-white text-[13px] font-bold">
+            Registrarse
+          </a>
+          <a href="/auth/login" className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-[13px] font-semibold">
+            Iniciar sesión
+          </a>
+        </div>
       </div>
     );
   }

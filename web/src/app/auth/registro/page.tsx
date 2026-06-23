@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Eye, EyeOff, User, Mail, Lock, Phone,
   ChevronLeft, Check, ShieldCheck, MailCheck,
@@ -100,6 +100,7 @@ type Substep = "email" | "profile" | "verify";
 
 function RegistroForm() {
   const searchParams = useSearchParams();
+  const router       = useRouter();
 
   const isProvider = searchParams.get("tipo") === "proveedor";
   const accent     = isProvider ? "#f39e10" : "#3b82f6";
@@ -121,6 +122,31 @@ function RegistroForm() {
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // ── Auto-redirect when email is confirmed (same or another tab) ──
+
+  useEffect(() => {
+    if (substep !== "verify") return;
+
+    const sb = getSupabase();
+    const { data: { subscription } } = sb.auth.onAuthStateChange(async (event, session) => {
+      if (event !== "SIGNED_IN" || !session?.user) return;
+      const { data: profile } = await sb
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+      if (profile?.role === "provider") {
+        router.replace("/proveedor/onboarding/negocio");
+      } else if (profile?.role === "client") {
+        router.replace("/cliente");
+      } else {
+        router.replace("/");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [substep, router]);
 
   // ── Google OAuth (proveedor only) ─────────────────────────────
 
