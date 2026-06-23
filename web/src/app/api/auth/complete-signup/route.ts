@@ -59,6 +59,11 @@ export async function POST(request: NextRequest) {
     { onConflict: "user_id" }
   );
 
+  if (!process.env.RESEND_API_KEY) {
+    await db.auth.admin.deleteUser(user.id);
+    return NextResponse.json({ error: "RESEND_API_KEY no está configurada en el servidor." }, { status: 500 });
+  }
+
   // Send the code via Resend (no SMTP config needed)
   const { error: emailError } = await resend.emails.send({
     from: "Eventia <onboarding@resend.dev>",
@@ -79,9 +84,9 @@ export async function POST(request: NextRequest) {
   });
 
   if (emailError) {
-    // Clean up user if email couldn't be sent
+    console.error("[complete-signup] Resend error:", JSON.stringify(emailError));
     await db.auth.admin.deleteUser(user.id);
-    return NextResponse.json({ error: "No se pudo enviar el correo. Intenta de nuevo." }, { status: 500 });
+    return NextResponse.json({ error: `No se pudo enviar el correo: ${(emailError as { message?: string }).message ?? "error desconocido"}` }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, user_id: user.id });
