@@ -14,10 +14,20 @@ function VerifyContent() {
     const sb = getSupabase();
 
     async function handle() {
-      // In PKCE flow, Supabase appends ?code=xxx; exchange it for a session.
-      // In implicit flow, the SDK reads the hash automatically on init.
-      const code = searchParams.get("code");
-      if (code) {
+      const code      = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const type      = (searchParams.get("type") ?? "email") as "email" | "signup" | "recovery";
+
+      if (tokenHash) {
+        // Token-hash flow: works on any device, no PKCE verifier needed.
+        const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type });
+        if (error) {
+          console.error("[verify] verifyOtp:", error.message);
+          setStatus("error");
+          return;
+        }
+      } else if (code) {
+        // PKCE flow: works when the link is opened in the same browser.
         const { error } = await sb.auth.exchangeCodeForSession(code);
         if (error) {
           console.error("[verify] exchangeCodeForSession:", error.message);
@@ -26,7 +36,6 @@ function VerifyContent() {
         }
       }
 
-      // Wait briefly for the SDK to finish processing hash-based tokens.
       await new Promise((r) => setTimeout(r, 300));
 
       const { data: { user } } = await sb.auth.getUser();
