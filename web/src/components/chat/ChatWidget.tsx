@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import { useState, useEffect, useRef } from "react";
-import { MessageCircle, X, Send, Sparkles, ExternalLink } from "lucide-react";
+import { MessageCircle, X, Send, Sparkles, ExternalLink, AlertCircle, RefreshCw } from "lucide-react";
 import { formatPrice } from "@/lib/data";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -19,13 +19,15 @@ interface ServiceResult {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+const WELCOME_TEXT = "¡Hola! Soy Eva, tu asistente de Eventia 🎉\n¿Qué tipo de evento estás planeando?";
+
 const WELCOME: UIMessage = {
   id:    "welcome",
   role:  "assistant",
-  parts: [{ type: "text", text: "¡Hola! Soy Eva, tu asistente de Eventia 🎉\n¿Qué tipo de evento estás planeando?" }],
+  parts: [{ type: "text", text: WELCOME_TEXT }],
 };
 
-// ── Service mini-card shown inside the chat ───────────────────────────────────
+// ── Service mini-card ─────────────────────────────────────────────────────────
 
 function ServiceCard({ s }: { s: ServiceResult }) {
   return (
@@ -38,15 +40,18 @@ function ServiceCard({ s }: { s: ServiceResult }) {
       <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">
         {s.cover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={s.cover} alt={s.title as string} className="w-full h-full object-cover" />
+          <img src={s.cover} alt={s.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">Sin foto</div>
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-gray-900 text-[13px] font-bold truncate leading-tight">{s.title as string}</p>
+        <p className="text-gray-900 text-[13px] font-bold truncate leading-tight">{s.title}</p>
         {s.location && (
-          <p className="text-gray-400 text-[11px] truncate mt-0.5">{s.location as string}</p>
+          <p className="text-gray-400 text-[11px] truncate mt-0.5">{s.location}</p>
+        )}
+        {s.category && (
+          <p className="text-gray-500 text-[11px] mt-0.5">{s.category.name}</p>
         )}
         <p className="text-[#f39e10] text-[12px] font-black mt-1">
           {formatPrice(s.base_price)}
@@ -73,27 +78,88 @@ function TypingDots() {
   );
 }
 
+// ── Message bubble ────────────────────────────────────────────────────────────
+
+function MessageBubble({ msg }: { msg: UIMessage }) {
+  const isUser = msg.role === "user";
+
+  const textParts = (msg.parts ?? []).filter(
+    (p) => p.type === "text" && typeof (p as { text?: string }).text === "string"
+  );
+
+  const toolParts = (msg.parts ?? []).filter(
+    (p): p is Record<string, unknown> =>
+      (p as Record<string, unknown>).type === "dynamic-tool" &&
+      (p as Record<string, unknown>).state === "output-available" &&
+      (p as Record<string, unknown>).toolName === "searchServices"
+  );
+
+  if (textParts.length === 0 && toolParts.length === 0) return null;
+
+  return (
+    <div className={`flex flex-col gap-2 ${isUser ? "items-end" : "items-start"}`}>
+      {textParts.map((part, i) => {
+        const text = (part as { text: string }).text;
+        if (!text.trim()) return null;
+        return (
+          <div
+            key={i}
+            className="max-w-[85%] px-4 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap"
+            style={{
+              background:   isUser ? "#f39e10" : "#fff",
+              color:        isUser ? "#fff" : "#1f2937",
+              borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+              border:       isUser ? "none" : "1px solid #e5e7eb",
+            }}
+          >
+            {text}
+          </div>
+        );
+      })}
+
+      {toolParts.map((part, i) => {
+        const result = (part as { output?: { services: ServiceResult[]; count: number } }).output;
+        const services = result?.services ?? [];
+        return (
+          <div key={`tool-${i}`} className="w-full flex flex-col gap-2 mt-1">
+            {services.length === 0 ? (
+              <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-[12px] text-gray-500">
+                No encontré servicios con esos criterios. ¿Quieres ampliar el presupuesto o cambiar de categoría?
+              </div>
+            ) : (
+              services.map((s) => <ServiceCard key={s.id} s={s} />)
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main widget ───────────────────────────────────────────────────────────────
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef  = useRef<HTMLDivElement>(null);
+  const inputRef   = useRef<HTMLInputElement>(null);
 
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, status, setMessages, error } = useChat({
     messages: [WELCOME],
+    onError: (err) => console.error("[Eva] chat error:", err),
   });
 
   const isLoading = status === "streaming" || status === "submitted";
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const handleReset = () => {
-    setMessages([WELCOME]);
-  };
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 100);
+  }, [open]);
+
+  const handleReset = () => setMessages([WELCOME]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,6 +167,13 @@ export function ChatWidget() {
     if (!text || isLoading) return;
     sendMessage({ text });
     setInput("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as unknown as React.FormEvent);
+    }
   };
 
   return (
@@ -130,9 +203,9 @@ export function ChatWidget() {
             <button
               onClick={handleReset}
               title="Nueva conversación"
-              className="text-white/60 hover:text-white transition-colors bg-transparent border-none cursor-pointer text-[11px] mr-1"
+              className="text-white/60 hover:text-white transition-colors bg-transparent border-none cursor-pointer p-1"
             >
-              Nueva
+              <RefreshCw size={14} />
             </button>
             <button
               onClick={() => setOpen(false)}
@@ -144,67 +217,32 @@ export function ChatWidget() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-[#f8f9fb]">
-            {messages.map((msg) => {
-              const isUser = msg.role === "user";
 
-              return (
-                <div key={msg.id} className={`flex flex-col gap-2 ${isUser ? "items-end" : "items-start"}`}>
-                  {msg.parts?.map((part, i) => {
-                    // Text bubble
-                    if (part.type === "text") {
-                      if (!part.text) return null;
-                      return (
-                        <div
-                          key={i}
-                          className="max-w-[85%] px-4 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap"
-                          style={{
-                            background:   isUser ? "#f39e10" : "#fff",
-                            color:        isUser ? "#fff" : "#1f2937",
-                            borderRadius: isUser
-                              ? "18px 18px 4px 18px"
-                              : "18px 18px 18px 4px",
-                            border:       isUser ? "none" : "1px solid #e5e7eb",
-                          }}
-                        >
-                          {part.text}
-                        </div>
-                      );
-                    }
-
-                    // Tool result (searchServices)
-                    const p = part as Record<string, unknown>;
-                    if (
-                      p.type === "dynamic-tool" &&
-                      p.toolName === "searchServices" &&
-                      p.state === "output-available"
-                    ) {
-                      const result = p.output as { services: ServiceResult[]; count: number } | undefined;
-                      const services = result?.services ?? [];
-                      return (
-                        <div key={i} className="w-full flex flex-col gap-2 mt-1">
-                          {services.length === 0 ? (
-                            <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-[12px] text-gray-500">
-                              No encontré servicios con esos criterios. ¿Quieres ampliar el presupuesto?
-                            </div>
-                          ) : (
-                            services.map((s) => <ServiceCard key={s.id} s={s} />)
-                          )}
-                        </div>
-                      );
-                    }
-
-                    return null;
-                  })}
+            {/* Error banner */}
+            {error && (
+              <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-xl px-3.5 py-3">
+                <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-red-700 text-[12px] font-semibold">Eva no puede responder ahora</p>
+                  <p className="text-red-500 text-[11px] mt-0.5">
+                    {error.message.includes("503") || error.message.includes("GOOGLE")
+                      ? "El chatbot no está configurado (falta GOOGLE_GENERATIVE_AI_API_KEY)."
+                      : "Ocurrió un error. Intenta de nuevo."}
+                  </p>
                 </div>
-              );
-            })}
+              </div>
+            )}
 
-            {/* Typing indicator */}
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} msg={msg} />
+            ))}
+
             {isLoading && (
               <div className="flex items-start">
                 <TypingDots />
               </div>
             )}
+
             <div ref={bottomRef} />
           </div>
 
@@ -214,8 +252,10 @@ export function ChatWidget() {
             className="flex items-center gap-2.5 px-3 py-3 border-t border-gray-100 bg-white shrink-0"
           >
             <input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Escribe tu mensaje..."
               disabled={isLoading}
               className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-[13px] outline-none transition-colors bg-[#f8f9fb]"

@@ -35,83 +35,97 @@ const db = () =>
   );
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
-  const modelMessages = await convertToModelMessages(messages);
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    console.error("[Eva] GOOGLE_GENERATIVE_AI_API_KEY no está configurada");
+    return Response.json(
+      { error: "Chatbot no configurado. Agrega GOOGLE_GENERATIVE_AI_API_KEY a .env.local" },
+      { status: 503 }
+    );
+  }
 
-  const result = streamText({
-    model: google("gemini-2.0-flash"),
-    system: SYSTEM,
-    messages: modelMessages,
-    stopWhen: stepCountIs(5),
-    tools: {
-      searchServices: tool({
-        description: "Busca servicios en el catálogo de Eventia según los criterios recopilados del usuario",
-        inputSchema: z.object({
-          category: z
-            .enum(["local", "fotografia", "musica", "decoracion"])
-            .optional()
-            .describe("Categoría del servicio a buscar"),
-          maxPrice: z
-            .number()
-            .optional()
-            .describe("Presupuesto máximo del usuario en soles peruanos"),
-          eventType: z
-            .string()
-            .optional()
-            .describe("Tipo de evento: boda, quinceaños, graduación, etc."),
+  try {
+    const body = await req.json();
+    const modelMessages = await convertToModelMessages(body.messages ?? []);
+
+    const result = streamText({
+      model: google("gemini-2.0-flash"),
+      system: SYSTEM,
+      messages: modelMessages,
+      stopWhen: stepCountIs(5),
+      tools: {
+        searchServices: tool({
+          description: "Busca servicios en el catálogo de Eventia según los criterios recopilados del usuario",
+          inputSchema: z.object({
+            category: z
+              .enum(["local", "fotografia", "musica", "decoracion"])
+              .optional()
+              .describe("Categoría del servicio a buscar"),
+            maxPrice: z
+              .number()
+              .optional()
+              .describe("Presupuesto máximo del usuario en soles peruanos"),
+            eventType: z
+              .string()
+              .optional()
+              .describe("Tipo de evento: boda, quinceaños, graduación, etc."),
+          }),
+          execute: async ({ category, maxPrice }: { category?: "local" | "fotografia" | "musica" | "decoracion"; maxPrice?: number; eventType?: string }) => {
+            const supabase = db();
+
+            let query = supabase
+              .from("services")
+              .select(`
+                id,
+                title,
+                description,
+                base_price,
+                location,
+                category:service_categories(name, slug),
+                images:service_images(url, is_cover, display_order)
+              `)
+              .eq("status", "active")
+              .order("base_price", { ascending: true })
+              .limit(4);
+
+            if (category) {
+              const { data: cat } = await supabase
+                .from("service_categories")
+                .select("id")
+                .eq("slug", category)
+                .single();
+              if (cat) query = query.eq("category_id", cat.id);
+            }
+
+            if (maxPrice) {
+              query = query.lte("base_price", maxPrice);
+            }
+
+            const { data } = await query;
+
+            const services = (data ?? []).map((s: Record<string, unknown>) => {
+              const imgs = (s.images as { url: string; is_cover: boolean; display_order: number }[]) ?? [];
+              const sorted = [...imgs].sort((a, b) => a.display_order - b.display_order);
+              const cover = sorted.find((i) => i.is_cover)?.url ?? sorted[0]?.url ?? null;
+              return {
+                id:         s.id,
+                title:      s.title,
+                base_price: s.base_price,
+                location:   s.location,
+                category:   s.category,
+                cover,
+              };
+            });
+
+            return { services, count: services.length };
+          },
         }),
-        execute: async ({ category, maxPrice }: { category?: "local" | "fotografia" | "musica" | "decoracion"; maxPrice?: number; eventType?: string }) => {
-          const supabase = db();
+      },
+    });
 
-          let query = supabase
-            .from("services")
-            .select(`
-              id,
-              title,
-              description,
-              base_price,
-              location,
-              category:service_categories(name, slug),
-              images:service_images(url, is_cover, display_order)
-            `)
-            .eq("status", "active")
-            .order("base_price", { ascending: true })
-            .limit(4);
-
-          if (category) {
-            const { data: cat } = await supabase
-              .from("service_categories")
-              .select("id")
-              .eq("slug", category)
-              .single();
-            if (cat) query = query.eq("category_id", cat.id);
-          }
-
-          if (maxPrice) {
-            query = query.lte("base_price", maxPrice);
-          }
-
-          const { data } = await query;
-
-          const services = (data ?? []).map((s: Record<string, unknown>) => {
-            const imgs = (s.images as { url: string; is_cover: boolean; display_order: number }[]) ?? [];
-            const sorted = [...imgs].sort((a, b) => a.display_order - b.display_order);
-            const cover = sorted.find((i) => i.is_cover)?.url ?? sorted[0]?.url ?? null;
-            return {
-              id:         s.id,
-              title:      s.title,
-              base_price: s.base_price,
-              location:   s.location,
-              category:   s.category,
-              cover,
-            };
-          });
-
-          return { services, count: services.length };
-        },
-      }),
-    },
-  });
-
-  return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    console.error("[Eva] Error en streamText:", message);
+    return Response.json({ error: message }, { status: 500 });
+  }
 }
