@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import type { UIMessage } from "ai";
+import type { UIMessage, DynamicToolUIPart } from "ai";
 import { useState, useEffect, useRef } from "react";
 import { MessageCircle, X, Send, Sparkles, ExternalLink, AlertCircle, RefreshCw } from "lucide-react";
 import { formatPrice } from "@/lib/data";
@@ -88,10 +88,10 @@ function MessageBubble({ msg }: { msg: UIMessage }) {
   );
 
   const toolParts = (msg.parts ?? []).filter(
-    (p): p is Record<string, unknown> =>
-      (p as Record<string, unknown>).type === "dynamic-tool" &&
-      (p as Record<string, unknown>).state === "output-available" &&
-      (p as Record<string, unknown>).toolName === "searchServices"
+    (p): p is DynamicToolUIPart & { state: "output-available"; output: unknown } =>
+      p.type === "dynamic-tool" &&
+      (p as DynamicToolUIPart).toolName === "searchServices" &&
+      (p as DynamicToolUIPart).state === "output-available"
   );
 
   if (textParts.length === 0 && toolParts.length === 0) return null;
@@ -118,7 +118,7 @@ function MessageBubble({ msg }: { msg: UIMessage }) {
       })}
 
       {toolParts.map((part, i) => {
-        const result = (part as { output?: { services: ServiceResult[]; count: number } }).output;
+        const result = (part.output as { services: ServiceResult[]; count: number } | undefined);
         const services = result?.services ?? [];
         return (
           <div key={`tool-${i}`} className="w-full flex flex-col gap-2 mt-1">
