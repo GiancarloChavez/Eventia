@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Mail, Lock, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, AlertTriangle, CheckCircle } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
 // ── Google icon ──────────────────────────────────────────────
@@ -25,6 +25,7 @@ function LoginContent() {
   const router      = useRouter();
   const searchParams = useSearchParams();
   const urlError    = searchParams.get("error");
+  const resetOk     = searchParams.get("reset") === "success";
 
   const [email,         setEmail]         = useState("");
   const [password,      setPassword]      = useState("");
@@ -70,6 +71,16 @@ function LoginContent() {
         </h1>
         <p className="text-gray-500 text-[14px]">Ingresa a tu cuenta para continuar</p>
       </div>
+
+      {/* Password reset success */}
+      {resetOk && (
+        <div className="mb-5 flex items-start gap-3 px-4 py-3.5 rounded-xl bg-green-50 border border-green-200">
+          <CheckCircle size={16} className="text-green-500 mt-0.5 shrink-0" />
+          <p className="text-green-800 text-[13px] font-semibold">
+            Contraseña actualizada exitosamente. Ya puedes iniciar sesión.
+          </p>
+        </div>
+      )}
 
       {/* OAuth warning: account not found */}
       {urlError === "no_account" && (
@@ -152,9 +163,12 @@ function LoginContent() {
         <div>
           <div className="flex justify-between items-center mb-1.5">
             <label className="text-gray-700 text-[13px] font-semibold">Contraseña</label>
-            <span className="text-[#f39e10] text-[12px] cursor-pointer hover:underline">
+            <Link
+              href="/auth/forgot-password"
+              className="text-[#f39e10] text-[12px] hover:underline"
+            >
               ¿Olvidaste tu contraseña?
-            </span>
+            </Link>
           </div>
           <div className="relative">
             <Lock
