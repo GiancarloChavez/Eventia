@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Calendar, FileText, CreditCard, User, Info } from "lucide-react";
+import { Calendar, FileText, CreditCard, User, Info, CalendarCheck, Clock, Users, Plus, ChevronRight } from "lucide-react";
 import { formatPrice } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
 
@@ -29,6 +29,35 @@ interface Booking {
   } | null;
 }
 
+interface EventBooking {
+  id: string;
+  status: string;
+  quoted_price: number | null;
+  start_time: string | null;
+  end_time: string | null;
+  services: {
+    id: string;
+    title: string;
+    base_price: number | null;
+    service_categories: { name: string } | null;
+    service_images: { url: string; display_order: number }[];
+  } | null;
+}
+
+interface Event {
+  id: string;
+  title: string;
+  event_type: string | null;
+  event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  guest_count: number | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  bookings: EventBooking[];
+}
+
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   pending:   { label: "Pendiente",  color: "#b45309", bg: "rgba(180,83,9,0.08)"   },
   confirmed: { label: "Confirmada", color: "#1d4ed8", bg: "rgba(29,78,216,0.08)"  },
@@ -37,6 +66,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 };
 
 const SIDEBAR_ITEMS = [
+  { id: "eventos",   label: "Mis eventos",   Icon: CalendarCheck },
   { id: "reservas",  label: "Mis reservas",  Icon: Calendar },
   { id: "contratos", label: "Mis contratos", Icon: FileText },
   { id: "pagos",     label: "Pagos",         Icon: CreditCard },
@@ -44,17 +74,36 @@ const SIDEBAR_ITEMS = [
 ];
 
 const TITLES: Record<string, string> = {
+  eventos:  "Mis eventos",
   reservas: "Mis reservas",
   contratos: "Contratos",
   pagos: "Pagos",
   perfil: "Mi perfil",
 };
 
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  boda:        "Boda",
+  quinceanero: "Quinceañero",
+  cumpleanos:  "Cumpleaños",
+  bautizo:     "Bautizo",
+  corporativo: "Corporativo",
+  graduacion:  "Graduación",
+  otro:        "Otro",
+};
+
+const BOOKING_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  pending:   { label: "Pendiente",  color: "#b45309", bg: "rgba(180,83,9,0.08)"   },
+  confirmed: { label: "Confirmada", color: "#1d4ed8", bg: "rgba(29,78,216,0.08)"  },
+  completed: { label: "Completada", color: "#15803d", bg: "rgba(21,128,61,0.08)"  },
+  cancelled: { label: "Cancelada",  color: "#6b7280", bg: "rgba(107,114,128,0.08)" },
+};
+
 export default function ClientDashboard() {
   const router   = useRouter();
-  const [active,   setActive]   = useState("reservas");
+  const [active,   setActive]   = useState("eventos");
   const [profile,  setProfile]  = useState<Profile | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [events,   setEvents]   = useState<Event[]>([]);
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
@@ -68,7 +117,7 @@ export default function ClientDashboard() {
         return;
       }
 
-      const [profResult, bookResult] = await Promise.all([
+      const [profResult, bookResult, eventsRes] = await Promise.all([
         sb.from("profiles").select("full_name, phone, role").eq("id", user.id).single(),
         sb.from("bookings")
           .select(`
@@ -82,6 +131,7 @@ export default function ClientDashboard() {
           `)
           .eq("client_id", user.id)
           .order("created_at", { ascending: false }),
+        fetch("/api/events").then((r) => r.json()).catch(() => ({ events: [] })),
       ]);
 
       setProfile({
@@ -92,6 +142,7 @@ export default function ClientDashboard() {
       });
 
       setBookings((bookResult.data as unknown as Booking[]) ?? []);
+      setEvents((eventsRes.events as Event[]) ?? []);
       setLoading(false);
     }
 
@@ -153,6 +204,175 @@ export default function ClientDashboard() {
           <h1 className="text-gray-900 text-[24px] font-black mb-0.5">{TITLES[active]}</h1>
           <p className="text-gray-500 text-[14px]">Bienvenido, {profile?.full_name?.split(" ")[0] ?? "usuario"}</p>
         </div>
+
+        {/* Eventos */}
+        {active === "eventos" && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <p className="text-gray-500 text-[14px]">
+                  {events.length === 0
+                    ? "Crea tu primer evento y organiza todos los servicios en un solo lugar"
+                    : `${events.length} evento${events.length !== 1 ? "s" : ""} creado${events.length !== 1 ? "s" : ""}`}
+                </p>
+              </div>
+              <Link
+                href="/catalogo"
+                className="flex items-center gap-2 bg-[#3b82f6] text-white rounded-xl px-4 py-2.5 text-[13px] font-bold hover:bg-[#2563eb] transition-colors"
+              >
+                <Plus size={14} /> Agregar servicio
+              </Link>
+            </div>
+
+            {events.length === 0 ? (
+              <div className="bg-white border border-gray-200 rounded-2xl flex flex-col items-center py-20 text-center">
+                <div className="w-16 h-16 rounded-full bg-[rgba(59,130,246,0.08)] flex items-center justify-center mb-4">
+                  <CalendarCheck size={28} className="text-[#3b82f6]" />
+                </div>
+                <p className="text-gray-700 text-[16px] font-bold mb-1">Aún no tienes eventos</p>
+                <p className="text-gray-400 text-[13px] mb-6 max-w-[280px] leading-relaxed">
+                  Cuando reserves un servicio, tu evento aparecerá aquí con el progreso de todos los servicios contratados.
+                </p>
+                <Link
+                  href="/catalogo"
+                  className="bg-[#3b82f6] text-white rounded-xl px-6 py-3 text-[14px] font-bold hover:bg-[#2563eb] transition-colors"
+                >
+                  Explorar servicios
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-5">
+                {events.map((ev) => {
+                  const total     = ev.bookings.length;
+                  const confirmed = ev.bookings.filter((b) => b.status === "confirmed" || b.status === "completed").length;
+                  const pct       = total > 0 ? Math.round((confirmed / total) * 100) : 0;
+                  const eventDate = new Date(ev.event_date + "T00:00:00").toLocaleDateString("es-PE", {
+                    weekday: "long", day: "numeric", month: "long", year: "numeric",
+                  });
+
+                  return (
+                    <div key={ev.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                      {/* Event header */}
+                      <div className="px-6 py-5 border-b border-gray-100">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              {ev.event_type && (
+                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[rgba(59,130,246,0.08)] text-[#3b82f6]">
+                                  {EVENT_TYPE_LABELS[ev.event_type] ?? ev.event_type}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-gray-900 text-[17px] font-black truncate">{ev.title}</h3>
+                            <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+                              <span className="text-gray-500 text-[12px] flex items-center gap-1.5">
+                                <Calendar size={12} className="text-[#3b82f6]" />
+                                {eventDate}
+                              </span>
+                              {(ev.start_time || ev.end_time) && (
+                                <span className="text-gray-500 text-[12px] flex items-center gap-1.5">
+                                  <Clock size={12} className="text-[#3b82f6]" />
+                                  {ev.start_time ?? ""}{ev.start_time && ev.end_time ? " – " : ""}{ev.end_time ?? ""}
+                                </span>
+                              )}
+                              {ev.guest_count && (
+                                <span className="text-gray-500 text-[12px] flex items-center gap-1.5">
+                                  <Users size={12} className="text-[#3b82f6]" />
+                                  {ev.guest_count} invitados
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress bar */}
+                        {total > 0 && (
+                          <div className="mt-4">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-gray-500 text-[12px]">
+                                {confirmed} de {total} servicio{total !== 1 ? "s" : ""} confirmado{confirmed !== 1 ? "s" : ""}
+                              </span>
+                              <span className="text-[#3b82f6] text-[12px] font-bold">{pct}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%`, background: pct === 100 ? "#16a34a" : "#3b82f6" }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Services list */}
+                      {ev.bookings.length === 0 ? (
+                        <div className="px-6 py-8 text-center">
+                          <p className="text-gray-400 text-[13px]">Sin servicios reservados aún</p>
+                          <Link href="/catalogo" className="text-[#3b82f6] text-[13px] font-semibold hover:underline mt-1 inline-block">
+                            Agregar servicio →
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-100">
+                          {ev.bookings.map((b) => {
+                            const svc    = b.services;
+                            const imgs   = [...(svc?.service_images ?? [])].sort((a, c) => a.display_order - c.display_order);
+                            const thumb  = imgs[0]?.url ?? null;
+                            const bst    = BOOKING_STATUS[b.status] ?? BOOKING_STATUS.pending;
+                            const price  = b.quoted_price ?? svc?.base_price ?? null;
+
+                            return (
+                              <div key={b.id} className="flex items-center gap-4 px-6 py-4">
+                                <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+                                  {thumb ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={thumb} alt={svc?.title} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Calendar size={16} className="text-gray-300" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-gray-900 text-[14px] font-semibold truncate">{svc?.title ?? "Servicio"}</p>
+                                  <p className="text-gray-400 text-[12px] mt-0.5">
+                                    {svc?.service_categories?.name ?? "—"}
+                                    {price != null && ` · ${formatPrice(price)}`}
+                                  </p>
+                                </div>
+                                <div
+                                  className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
+                                  style={{ color: bst.color, background: bst.bg }}
+                                >
+                                  {bst.label}
+                                </div>
+                                {svc?.id && (
+                                  <Link href={`/servicios/${svc.id}`} className="text-gray-300 hover:text-[#3b82f6] transition-colors">
+                                    <ChevronRight size={16} />
+                                  </Link>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Footer CTA */}
+                      <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
+                        <Link
+                          href="/catalogo"
+                          className="text-[#3b82f6] text-[13px] font-semibold hover:underline flex items-center gap-1"
+                        >
+                          <Plus size={13} /> Agregar otro servicio a este evento
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Reservas */}
         {active === "reservas" && (

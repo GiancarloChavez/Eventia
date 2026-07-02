@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Calendar, Check, Star, CreditCard, Lock, ChevronLeft } from "lucide-react";
+import { MapPin, Calendar, Check, Star, CreditCard, Lock, ChevronLeft, Clock, Users } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
 import { SERVICE_SELECT, formatPrice, type DbService } from "@/lib/data";
@@ -15,7 +15,25 @@ import { ServiceCard } from "@/components/shared/service-card";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-type BookingStep = "date" | "card" | "done";
+type BookingStep = "details" | "card" | "done";
+
+const EVENT_TYPES = [
+  { value: "boda",        label: "Boda" },
+  { value: "quinceanero", label: "Quinceañero" },
+  { value: "cumpleanos",  label: "Cumpleaños" },
+  { value: "bautizo",     label: "Bautizo" },
+  { value: "corporativo", label: "Corporativo" },
+  { value: "graduacion",  label: "Graduación" },
+  { value: "otro",        label: "Otro" },
+];
+
+const INPUT_BASE = {
+  border: "1.5px solid #e5e7eb",
+  color: "#111827",
+  background: "#fff",
+  fontFamily: "inherit",
+  boxSizing: "border-box" as const,
+};
 
 export default function DetailPage() {
   const params = useParams();
@@ -25,11 +43,19 @@ export default function DetailPage() {
   const [service,      setService]      = useState<DbService | null>(null);
   const [related,      setRelated]      = useState<DbService[]>([]);
   const [activeImg,    setActiveImg]    = useState(0);
-  const [selectedDate, setSelectedDate] = useState("");
   const [loading,      setLoading]      = useState(true);
 
+  // Event details
+  const [eventName,    setEventName]    = useState("");
+  const [eventType,    setEventType]    = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [startTime,    setStartTime]    = useState("");
+  const [endTime,      setEndTime]      = useState("");
+  const [guestCount,   setGuestCount]   = useState("");
+  const [notes,        setNotes]        = useState("");
+
   // Booking + card state
-  const [bookingStep,     setBookingStep]     = useState<BookingStep>("date");
+  const [bookingStep,     setBookingStep]     = useState<BookingStep>("details");
   const [existingCard,    setExistingCard]    = useState<{ last4: string; brand: string } | null>(null);
   const [cardReady,       setCardReady]       = useState(false);
   const [cardComplete,    setCardComplete]    = useState(false);
@@ -44,7 +70,8 @@ export default function DetailPage() {
   const mountedRef   = useRef(false);
   const clientSecretRef = useRef<string | null>(null);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today        = new Date().toISOString().split("T")[0];
+  const detailsValid = eventName.trim() !== "" && eventType !== "" && selectedDate !== "";
 
   useEffect(() => {
     async function fetchService() {
@@ -107,7 +134,7 @@ export default function DetailPage() {
   // ── Step 1: user clicks "Reservar" ──────────────────────────────────────
 
   const handleStartBooking = async () => {
-    if (!selectedDate) return;
+    if (!detailsValid) return;
     setBookingError(null);
     setSubmitting(true);
 
@@ -199,7 +226,7 @@ export default function DetailPage() {
       }
     }
 
-    // Save booking
+    // Save booking (server creates event + booking atomically)
     const bookRes = await fetch("/api/bookings", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -208,6 +235,12 @@ export default function DetailPage() {
         event_date:               selectedDate,
         quoted_price:             service!.base_price ?? null,
         client_payment_method_id: paymentMethodId,
+        event_name:               eventName.trim(),
+        event_type:               eventType || null,
+        start_time:               startTime || null,
+        end_time:                 endTime   || null,
+        guest_count:              guestCount ? parseInt(guestCount) : null,
+        notes:                    notes.trim() || null,
       }),
     });
 
@@ -401,56 +434,126 @@ export default function DetailPage() {
                       className="w-full rounded-xl py-3 text-center text-[14px] font-bold text-white border-none"
                       style={{ background: "#f39e10", display: "block" }}
                     >
-                      Ver mis reservas →
+                      Ver mi evento →
                     </Link>
                   </div>
                 )}
 
-                {/* ── Step: date ── */}
-                {bookingStep === "date" && (
+                {/* ── Step: details ── */}
+                {bookingStep === "details" && (
                   <>
-                    <label className="text-gray-900 text-[13px] font-semibold block mb-2">Fecha del evento</label>
+                    <p className="text-gray-500 text-[11px] font-semibold uppercase tracking-[0.6px] mb-3">Detalles del evento</p>
+
+                    <label className="text-gray-700 text-[12px] font-semibold block mb-1">
+                      Nombre del evento <span className="text-[#f39e10]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={eventName}
+                      onChange={(e) => setEventName(e.target.value)}
+                      placeholder="Ej. Boda de Ana y Carlos"
+                      className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none mb-3"
+                      style={{ ...INPUT_BASE, border: eventName ? "1.5px solid #f39e10" : "1.5px solid #e5e7eb" }}
+                    />
+
+                    <label className="text-gray-700 text-[12px] font-semibold block mb-1">
+                      Tipo de evento <span className="text-[#f39e10]">*</span>
+                    </label>
+                    <select
+                      value={eventType}
+                      onChange={(e) => setEventType(e.target.value)}
+                      className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none mb-3 cursor-pointer"
+                      style={{ ...INPUT_BASE, border: eventType ? "1.5px solid #f39e10" : "1.5px solid #e5e7eb" }}
+                    >
+                      <option value="">Seleccionar tipo...</option>
+                      {EVENT_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+
+                    <label className="text-gray-700 text-[12px] font-semibold block mb-1">
+                      Fecha del evento <span className="text-[#f39e10]">*</span>
+                    </label>
                     <input
                       type="date"
                       value={selectedDate}
                       min={today}
                       onChange={(e) => setSelectedDate(e.target.value)}
-                      className="w-full rounded-xl py-3 px-3.5 text-[14px] outline-none transition-all"
-                      style={{
-                        border: `1.5px solid ${selectedDate ? "#f39e10" : "#e5e7eb"}`,
-                        color: selectedDate ? "#111827" : "#9ca3af",
-                        background: "#fff",
-                        fontFamily: "inherit",
-                        boxSizing: "border-box",
-                      }}
+                      className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none mb-3"
+                      style={{ ...INPUT_BASE, border: selectedDate ? "1.5px solid #f39e10" : "1.5px solid #e5e7eb" }}
                       suppressHydrationWarning
                     />
 
-                    <div className="flex gap-1.5 items-center bg-[rgba(243,158,16,0.08)] border border-[rgba(243,158,16,0.22)] rounded-lg px-3 py-2.5 my-3.5 text-[12px] text-gray-500">
-                      <Calendar size={13} className="text-[#f39e10]" />
-                      Disponibilidad: <strong className="text-gray-900 ml-0.5">Consultar con el proveedor</strong>
+                    <div className="flex gap-2 mb-3">
+                      <div className="flex-1">
+                        <label className="text-gray-700 text-[12px] font-semibold flex items-center gap-1 mb-1">
+                          <Clock size={11} />Inicio
+                        </label>
+                        <input
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="w-full rounded-xl py-2.5 px-3 text-[13px] outline-none"
+                          style={INPUT_BASE}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-gray-700 text-[12px] font-semibold flex items-center gap-1 mb-1">
+                          <Clock size={11} />Fin
+                        </label>
+                        <input
+                          type="time"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="w-full rounded-xl py-2.5 px-3 text-[13px] outline-none"
+                          style={INPUT_BASE}
+                        />
+                      </div>
                     </div>
+
+                    <label className="text-gray-700 text-[12px] font-semibold flex items-center gap-1 mb-1">
+                      <Users size={11} />Número de invitados
+                    </label>
+                    <input
+                      type="number"
+                      value={guestCount}
+                      min={1}
+                      onChange={(e) => setGuestCount(e.target.value)}
+                      placeholder="Ej. 150"
+                      className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none mb-3"
+                      style={INPUT_BASE}
+                    />
+
+                    <label className="text-gray-700 text-[12px] font-semibold block mb-1">Notas adicionales</label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Preferencias, horarios especiales..."
+                      rows={2}
+                      className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none resize-none mb-4"
+                      style={{ ...INPUT_BASE }}
+                    />
 
                     {bookingError && (
                       <p className="text-red-500 text-[12px] mb-3">{bookingError}</p>
                     )}
 
                     <button
-                      disabled={!selectedDate || submitting}
+                      disabled={!detailsValid || submitting}
                       onClick={handleStartBooking}
-                      className="w-full border-none rounded-xl py-3.5 text-[15px] font-bold mb-2.5 transition-colors flex items-center justify-center gap-2"
+                      className="w-full border-none rounded-xl py-3.5 text-[15px] font-bold mb-3 transition-colors flex items-center justify-center gap-2"
                       style={{
-                        background: selectedDate ? "#f39e10" : "#f3f4f6",
-                        color:      selectedDate ? "#fff"    : "#9ca3af",
-                        cursor:     selectedDate && !submitting ? "pointer" : "default",
+                        background: detailsValid ? "#f39e10" : "#f3f4f6",
+                        color:      detailsValid ? "#fff"    : "#9ca3af",
+                        cursor:     detailsValid && !submitting ? "pointer" : "default",
                       }}
                     >
                       {submitting ? (
                         <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Verificando...</>
-                      ) : "Reservar ahora →"}
+                      ) : "Continuar →"}
                     </button>
 
-                    <div className="border-t border-gray-100 pt-4 mt-2 flex flex-col gap-2">
+                    <div className="flex flex-col gap-1.5">
                       {["Cancelación gratuita hasta 7 días antes", "Soporte disponible 24/7"].map((item) => (
                         <div key={item} className="flex gap-2 items-center">
                           <Check size={13} className="text-[#f39e10] shrink-0" />
@@ -460,7 +563,7 @@ export default function DetailPage() {
                       <div className="flex gap-2 items-start mt-1 pt-3 border-t border-gray-100">
                         <CreditCard size={13} className="text-[#f39e10] shrink-0 mt-0.5" />
                         <span className="text-gray-500 text-[12px] leading-relaxed">
-                          Se solicitará tu tarjeta para confirmar la reserva. Sin cobros hasta que el proveedor acepte.
+                          Se solicitará tu tarjeta en el siguiente paso. Sin cobros hasta que el proveedor acepte.
                         </span>
                       </div>
                     </div>
@@ -472,15 +575,31 @@ export default function DetailPage() {
                   <div>
                     <button
                       type="button"
-                      onClick={() => { setBookingStep("date"); setBookingError(null); }}
+                      onClick={() => { setBookingStep("details"); setBookingError(null); }}
                       className="flex items-center gap-1 text-gray-400 text-[12px] hover:text-gray-600 mb-4 bg-transparent border-none cursor-pointer p-0"
                     >
-                      <ChevronLeft size={14} /> Cambiar fecha
+                      <ChevronLeft size={14} /> Cambiar detalles
                     </button>
 
-                    <div className="text-gray-500 text-[12px] mb-4 flex items-center gap-1.5">
-                      <Calendar size={12} className="text-[#f39e10]" />
-                      Fecha: <strong className="text-gray-900">{new Date(selectedDate + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" })}</strong>
+                    {/* Event summary */}
+                    <div className="bg-[rgba(243,158,16,0.06)] border border-[rgba(243,158,16,0.18)] rounded-xl p-3 mb-4">
+                      <p className="text-gray-900 text-[13px] font-bold truncate">{eventName}</p>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <span className="text-gray-500 text-[11px] flex items-center gap-1">
+                          <Calendar size={10} className="text-[#f39e10]" />
+                          {selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long" }) : ""}
+                        </span>
+                        {startTime && (
+                          <span className="text-gray-500 text-[11px] flex items-center gap-1">
+                            <Clock size={10} className="text-[#f39e10]" />{startTime}{endTime ? ` – ${endTime}` : ""}
+                          </span>
+                        )}
+                        {guestCount && (
+                          <span className="text-gray-500 text-[11px] flex items-center gap-1">
+                            <Users size={10} className="text-[#f39e10]" />{guestCount} invitados
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Existing card */}
