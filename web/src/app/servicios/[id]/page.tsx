@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Calendar, Check, Star, CreditCard, Lock, ChevronLeft, Clock, Users } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
@@ -36,14 +36,22 @@ const INPUT_BASE = {
 };
 
 export default function DetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params.id as string;
+  const params       = useParams();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const id           = params.id as string;
+  const eventIdParam = searchParams.get("event_id");
 
   const [service,      setService]      = useState<DbService | null>(null);
   const [related,      setRelated]      = useState<DbService[]>([]);
   const [activeImg,    setActiveImg]    = useState(0);
   const [loading,      setLoading]      = useState(true);
+
+  // URL event context
+  const [urlEvent, setUrlEvent] = useState<{
+    id: string; title: string; event_date: string; event_type: string | null;
+    start_time: string | null; end_time: string | null; guest_count: number | null;
+  } | null>(null);
 
   // Event details
   const [eventMode,      setEventMode]      = useState<"new"|"existing">("new");
@@ -76,9 +84,11 @@ export default function DetailPage() {
   const clientSecretRef = useRef<string | null>(null);
 
   const today        = new Date().toISOString().split("T")[0];
-  const detailsValid = eventMode === "existing"
+  const detailsValid = eventIdParam
     ? selectedEventId !== "" && selectedDate !== ""
-    : eventName.trim() !== "" && eventType !== "" && selectedDate !== "";
+    : eventMode === "existing"
+      ? selectedEventId !== "" && selectedDate !== ""
+      : eventName.trim() !== "" && eventType !== "" && selectedDate !== "";
 
   const loadUserEvents = async () => {
     if (eventsLoaded || loadingEvents) return;
@@ -129,6 +139,27 @@ export default function DetailPage() {
     }
     fetchService();
   }, [id]);
+
+  // Pre-fill from URL event_id
+  useEffect(() => {
+    if (!eventIdParam) return;
+    fetch("/api/events")
+      .then((r) => (r.ok ? r.json() : { events: [] }))
+      .then(({ events }) => {
+        const ev = (events ?? []).find((e: { id: string }) => e.id === eventIdParam);
+        if (!ev) return;
+        setUrlEvent(ev);
+        setSelectedEventId(ev.id);
+        setEventMode("existing");
+        setEventName(ev.title);
+        setEventType(ev.event_type ?? "");
+        setSelectedDate(ev.event_date);
+        setStartTime(ev.start_time ?? "");
+        setEndTime(ev.end_time ?? "");
+        setGuestCount(ev.guest_count ? String(ev.guest_count) : "");
+      })
+      .catch(() => {});
+  }, [eventIdParam]);
 
   // Mount Stripe card element when step becomes "card" and no existing card
   useEffect(() => {
@@ -481,6 +512,50 @@ export default function DetailPage() {
                   <>
                     <p className="text-gray-500 text-[11px] font-semibold uppercase tracking-[0.6px] mb-3">Detalles del evento</p>
 
+                    {/* ── Event from URL (locked context) ── */}
+                    {eventIdParam && (
+                      urlEvent ? (
+                        <>
+                          <div className="bg-[rgba(59,130,246,0.05)] border border-[rgba(59,130,246,0.18)] rounded-xl p-3.5 mb-3">
+                            <p className="text-[10px] font-bold text-[#3b82f6] uppercase tracking-[0.5px] mb-1">Cotizando para</p>
+                            <p className="text-gray-900 text-[14px] font-black mb-1.5 truncate">{urlEvent.title}</p>
+                            <div className="flex flex-wrap gap-3">
+                              <span className="text-gray-500 text-[12px] flex items-center gap-1">
+                                <Calendar size={10} className="text-[#3b82f6]" />
+                                {new Date(urlEvent.event_date + "T00:00:00").toLocaleDateString("es-PE", { weekday: "long", day: "numeric", month: "long" })}
+                              </span>
+                              {urlEvent.start_time && (
+                                <span className="text-gray-500 text-[12px] flex items-center gap-1">
+                                  <Clock size={10} className="text-[#3b82f6]" />
+                                  {urlEvent.start_time}{urlEvent.end_time ? ` – ${urlEvent.end_time}` : ""}
+                                </span>
+                              )}
+                              {urlEvent.guest_count && (
+                                <span className="text-gray-500 text-[12px] flex items-center gap-1">
+                                  <Users size={10} className="text-[#3b82f6]" />
+                                  {urlEvent.guest_count} invitados
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <label className="text-gray-700 text-[12px] font-semibold block mb-1">Notas adicionales</label>
+                          <textarea
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Preferencias para este servicio..."
+                            rows={2}
+                            className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none resize-none mb-4"
+                            style={{ ...INPUT_BASE }}
+                          />
+                        </>
+                      ) : (
+                        <div className="h-20 bg-gray-100 animate-pulse rounded-xl mb-4" />
+                      )
+                    )}
+
+                    {/* ── Normal event selection (only when no URL event) ── */}
+                    {!eventIdParam && (
+                    <>
                     {/* Event mode toggle */}
                     {!eventsLoaded ? (
                       <button
@@ -650,6 +725,8 @@ export default function DetailPage() {
                       className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none resize-none mb-4"
                       style={{ ...INPUT_BASE }}
                     />
+                    </>)}
+                    {/* end !eventIdParam block */}
                     </>)}
 
                     {bookingError && (

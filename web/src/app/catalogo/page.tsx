@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, ChevronLeft, ChevronRight, Calendar, Users, Camera, Music, Sparkles, Building2, Tag, SlidersHorizontal, X } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Calendar, Users, Camera, Music, Sparkles, Building2, Tag, SlidersHorizontal, X, CalendarCheck } from "lucide-react";
 import { SERVICE_SELECT, type Category, type DbService } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
 import { ServiceCard } from "@/components/shared/service-card";
@@ -81,6 +81,9 @@ export default function CatalogPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const eventId    = searchParams.get("event_id")    ?? undefined;
+  const eventTitle = searchParams.get("event_title") ?? undefined;
+
   const [category, setCategory] = useState<Category | "">((searchParams.get("category") as Category) ?? "");
   const [date, setDate] = useState(searchParams.get("date") ?? "");
   const [field3, setField3] = useState("");
@@ -147,14 +150,18 @@ export default function CatalogPage() {
   function switchCategory(cat: Category | "") {
     setCategory(cat);
     const params = new URLSearchParams();
-    if (cat) params.set("category", cat);
-    router.push(cat ? `/catalogo?${params.toString()}` : "/catalogo", { scroll: false });
+    if (cat)        params.set("category",    cat);
+    if (eventId)    params.set("event_id",    eventId);
+    if (eventTitle) params.set("event_title", eventTitle);
+    router.push(`/catalogo?${params.toString()}`, { scroll: false });
   }
 
   function handleSearch() {
     const params = new URLSearchParams();
-    if (category) params.set("category", category);
-    if (date) params.set("date", date);
+    if (category)   params.set("category",    category);
+    if (date)       params.set("date",        date);
+    if (eventId)    params.set("event_id",    eventId);
+    if (eventTitle) params.set("event_title", eventTitle);
     router.push(`/catalogo?${params.toString()}`, { scroll: false });
     document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -287,6 +294,24 @@ export default function CatalogPage() {
 
       {/* ── RESULTS ──────────────────────────────────────────────────── */}
       <section id="results" className="px-8 py-8">
+        {/* Event context banner */}
+        {eventId && eventTitle && (
+          <div className="mb-6 flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+            <CalendarCheck size={16} className="text-blue-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-blue-800 text-[13px] font-semibold">
+                Agregando servicio a <span className="font-black">"{eventTitle}"</span>
+              </p>
+              <p className="text-blue-500 text-[12px]">Al reservar, el servicio quedará vinculado a este evento automáticamente.</p>
+            </div>
+            <Link
+              href="/cliente"
+              className="text-blue-500 hover:text-blue-700 text-[12px] font-semibold shrink-0 transition-colors"
+            >
+              ✕ Salir
+            </Link>
+          </div>
+        )}
         <div className="max-w-[1280px] mx-auto">
 
           {/* Toolbar */}
@@ -388,7 +413,7 @@ export default function CatalogPage() {
             <>
               <div className="grid grid-cols-4 gap-5 mb-8">
                 {paginated.map((s) => (
-                  <ServiceCard key={s.id} service={s} />
+                  <ServiceCard key={s.id} service={s} eventId={eventId} />
                 ))}
               </div>
 

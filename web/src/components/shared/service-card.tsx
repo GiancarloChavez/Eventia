@@ -5,7 +5,7 @@ import { BadgeCheck } from "lucide-react";
 import type { DbService } from "@/lib/data";
 import { formatPrice } from "@/lib/data";
 
-export function ServiceCard({ service }: { service: DbService }) {
+export function ServiceCard({ service, eventId }: { service: DbService; eventId?: string }) {
   const sorted = [...service.images].sort((a, b) => a.display_order - b.display_order);
   const cover =
     sorted.find((i) => i.is_cover)?.url ??
@@ -13,9 +13,10 @@ export function ServiceCard({ service }: { service: DbService }) {
     "https://picsum.photos/seed/evdefault/800/520";
 
   const isVerified = service.provider?.status === "approved";
+  const href = eventId ? `/servicios/${service.id}?event_id=${eventId}` : `/servicios/${service.id}`;
 
   return (
-    <Link href={`/servicios/${service.id}`} className="block group">
+    <Link href={href} className="block group">
       <div
         className="rounded-[22px] overflow-hidden flex flex-col bg-white"
         style={{
