@@ -44,39 +44,53 @@ export async function GET() {
   // 3. Get bookings — no nested joins to avoid PostgREST FK ambiguity
   const { data: bookings, error: bookErr } = await db
     .from("bookings")
-    .select("id, event_date, status, quoted_price, created_at, notes, client_id, service_id")
+    .select("id, event_date, event_id, event_type, start_time, end_time, guest_count, status, quoted_price, created_at, notes, client_id, service_id")
     .in("service_id", serviceIds)
     .order("created_at", { ascending: false });
 
   if (bookErr) return NextResponse.json({ error: bookErr.message }, { status: 500 });
   if (!bookings || bookings.length === 0) return NextResponse.json({ bookings: [] });
 
-  // 4. Fetch profiles for each unique client_id separately
+  // 4. Fetch profiles and events in parallel
   const clientIds = [...new Set(bookings.map((b: { client_id: string }) => b.client_id))];
-  const { data: profiles } = await db
-    .from("profiles")
-    .select("id, full_name, phone")
-    .in("id", clientIds);
+  const eventIds  = [...new Set(bookings.map((b: { event_id: string | null }) => b.event_id).filter(Boolean))] as string[];
+
+  const [{ data: profiles }, { data: eventsData }] = await Promise.all([
+    db.from("profiles").select("id, full_name, phone").in("id", clientIds),
+    eventIds.length > 0
+      ? db.from("events").select("id, title, event_type, guest_count, start_time, end_time").in("id", eventIds)
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const profileMap: Record<string, { full_name: string | null; phone: string | null }> = {};
   (profiles ?? []).forEach((p: { id: string; full_name: string | null; phone: string | null }) => {
     profileMap[p.id] = { full_name: p.full_name, phone: p.phone };
   });
 
+  const eventMap: Record<string, { title: string; event_type: string | null; guest_count: number | null; start_time: string | null; end_time: string | null }> = {};
+  (eventsData ?? []).forEach((e: { id: string; title: string; event_type: string | null; guest_count: number | null; start_time: string | null; end_time: string | null }) => {
+    eventMap[e.id] = { title: e.title, event_type: e.event_type, guest_count: e.guest_count, start_time: e.start_time, end_time: e.end_time };
+  });
+
   // 5. Merge and return in the shape the frontend expects
   const result = bookings.map((b: {
-    id: string; event_date: string; status: string;
-    quoted_price: number | null; created_at: string;
+    id: string; event_date: string; event_id: string | null; event_type: string | null;
+    start_time: string | null; end_time: string | null; guest_count: number | null;
+    status: string; quoted_price: number | null; created_at: string;
     notes: string | null; client_id: string; service_id: string;
   }) => ({
     id:           b.id,
     event_date:   b.event_date,
+    start_time:   b.start_time,
+    end_time:     b.end_time,
+    guest_count:  b.guest_count,
     status:       b.status,
     quoted_price: b.quoted_price,
     created_at:   b.created_at,
     notes:        b.notes,
     services:     { title: serviceTitleMap[b.service_id] ?? null },
     profiles:     profileMap[b.client_id] ?? { full_name: null, phone: null },
+    event:        b.event_id ? (eventMap[b.event_id] ?? null) : null,
   }));
 
   return NextResponse.json({ bookings: result });

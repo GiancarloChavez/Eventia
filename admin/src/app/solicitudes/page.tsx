@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAdminDb } from "@/lib/supabase-admin";
-import { FileText, Clock, CheckCircle, XCircle, Calendar, Tag } from "lucide-react";
+import { FileText, Clock, CheckCircle, XCircle, Calendar, Tag, Users } from "lucide-react";
 
 const STATUS_TABS = [
   { key: "all",       label: "Todas",       Icon: FileText,    color: "text-gray-600"  },
@@ -21,6 +21,10 @@ const STATUS_BADGE: Record<string, { label: string; classes: string }> = {
 type BookingRow = {
   id: string;
   event_date: string;
+  event_id: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  guest_count: number | null;
   status: string;
   quoted_price: number | null;
   created_at: string;
@@ -29,6 +33,18 @@ type BookingRow = {
   service_title: string | null;
   provider_name: string | null;
   client_name: string | null;
+  event_title: string | null;
+  event_type: string | null;
+};
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  boda:        "Boda",
+  quinceanero: "Quinceañero",
+  cumpleanos:  "Cumpleaños",
+  bautizo:     "Bautizo",
+  corporativo: "Corporativo",
+  graduacion:  "Graduación",
+  otro:        "Otro",
 };
 
 async function getData(status: StatusKey) {
@@ -37,8 +53,8 @@ async function getData(status: StatusKey) {
   const [{ data: allBookings }, filteredRes] = await Promise.all([
     db.from("bookings").select("status"),
     status === "all"
-      ? db.from("bookings").select("id,event_date,status,quoted_price,created_at,client_id,service_id").order("created_at", { ascending: false })
-      : db.from("bookings").select("id,event_date,status,quoted_price,created_at,client_id,service_id").eq("status", status).order("created_at", { ascending: false }),
+      ? db.from("bookings").select("id,event_date,event_id,start_time,end_time,guest_count,status,quoted_price,created_at,client_id,service_id").order("created_at", { ascending: false })
+      : db.from("bookings").select("id,event_date,event_id,start_time,end_time,guest_count,status,quoted_price,created_at,client_id,service_id").eq("status", status).order("created_at", { ascending: false }),
   ]);
 
   const counts: Record<string, number> = { all: 0, pending: 0, confirmed: 0, cancelled: 0, completed: 0 };
@@ -52,6 +68,7 @@ async function getData(status: StatusKey) {
 
   const serviceIds = [...new Set(bookings.map((b) => b.service_id as string))];
   const clientIds  = [...new Set(bookings.map((b) => b.client_id  as string))];
+  const eventIds   = [...new Set(bookings.map((b) => b.event_id as string | null).filter(Boolean))] as string[];
 
   const { data: services } = await db
     .from("services")
@@ -60,9 +77,12 @@ async function getData(status: StatusKey) {
 
   const providerIds = [...new Set((services ?? []).map((s: { provider_id: string }) => s.provider_id))];
 
-  const [{ data: providers }, { data: profiles }] = await Promise.all([
+  const [{ data: providers }, { data: profiles }, { data: eventsData }] = await Promise.all([
     db.from("providers").select("id, business_name").in("id", providerIds),
     db.from("profiles").select("id, full_name").in("id", clientIds),
+    eventIds.length > 0
+      ? db.from("events").select("id, title, event_type").in("id", eventIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const providerMap: Record<string, string> = Object.fromEntries(
@@ -77,10 +97,17 @@ async function getData(status: StatusKey) {
   const profileMap: Record<string, string | null> = Object.fromEntries(
     (profiles ?? []).map((p: { id: string; full_name: string | null }) => [p.id, p.full_name])
   );
+  const eventMap: Record<string, { title: string; event_type: string | null }> = Object.fromEntries(
+    (eventsData ?? []).map((e: { id: string; title: string; event_type: string | null }) => [e.id, { title: e.title, event_type: e.event_type }])
+  );
 
   const result: BookingRow[] = bookings.map((b) => ({
     id:            b.id,
     event_date:    b.event_date,
+    event_id:      b.event_id      ?? null,
+    start_time:    b.start_time    ?? null,
+    end_time:      b.end_time      ?? null,
+    guest_count:   b.guest_count   ?? null,
     status:        b.status,
     quoted_price:  b.quoted_price,
     created_at:    b.created_at,
@@ -89,6 +116,8 @@ async function getData(status: StatusKey) {
     service_title: serviceMap[b.service_id]?.title        ?? null,
     provider_name: serviceMap[b.service_id]?.providerName ?? null,
     client_name:   profileMap[b.client_id]               ?? null,
+    event_title:   b.event_id ? (eventMap[b.event_id]?.title ?? null) : null,
+    event_type:    b.event_id ? (eventMap[b.event_id]?.event_type ?? null) : null,
   }));
 
   return { bookings: result, counts };
@@ -169,7 +198,19 @@ export default async function SolicitudesPage({
                     <p className="text-gray-900 text-[14px] font-bold truncate">
                       {b.client_name ?? "Cliente"}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+
+                    {/* Event pill */}
+                    {b.event_title && (
+                      <div className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 mt-1 mb-1.5">
+                        <Calendar size={10} className="text-blue-500 shrink-0" />
+                        <span className="text-blue-700 text-[11px] font-semibold truncate">{b.event_title}</span>
+                        {b.event_type && (
+                          <span className="text-blue-400 text-[10px]">· {EVENT_TYPE_LABELS[b.event_type] ?? b.event_type}</span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-gray-500 text-[12px] flex items-center gap-1 truncate">
                         <Tag size={10} className="shrink-0" />
                         {b.service_title ?? "—"}
@@ -177,9 +218,22 @@ export default async function SolicitudesPage({
                       <span className="text-gray-300 text-[11px]">·</span>
                       <span className="text-gray-400 text-[12px] truncate">{b.provider_name ?? "—"}</span>
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Calendar size={10} className="text-gray-400 shrink-0" />
-                      <span className="text-gray-400 text-[11px]">Evento: {eventDate}</span>
+
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      <span className="text-gray-400 text-[11px] flex items-center gap-1">
+                        <Calendar size={10} className="shrink-0" />{eventDate}
+                      </span>
+                      {(b.start_time || b.end_time) && (
+                        <span className="text-gray-400 text-[11px] flex items-center gap-1">
+                          <Clock size={10} className="shrink-0" />
+                          {b.start_time ?? ""}{b.start_time && b.end_time ? " – " : ""}{b.end_time ?? ""}
+                        </span>
+                      )}
+                      {b.guest_count && (
+                        <span className="text-gray-400 text-[11px] flex items-center gap-1">
+                          <Users size={10} className="shrink-0" />{b.guest_count} inv.
+                        </span>
+                      )}
                     </div>
                   </div>
 

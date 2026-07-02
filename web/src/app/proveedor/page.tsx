@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Grid, FileText, Calendar, DollarSign, User,
-  MapPin, Clock, Package, X, Plus, ImageIcon, Save, Pencil, Camera, CreditCard, AlertTriangle,
+  MapPin, Clock, Package, X, Plus, ImageIcon, Save, Pencil, Camera, CreditCard, AlertTriangle, Users,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { AddServiceDialog } from "@/components/provider/AddServiceDialog";
@@ -46,13 +46,33 @@ interface ProfileData { full_name: string; email: string; }
 interface BookingRequest {
   id: string;
   event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  guest_count: number | null;
   status: string;
   quoted_price: number | null;
   created_at: string;
   notes: string | null;
   services: { title: string } | null;
   profiles: { full_name: string | null; phone: string | null } | null;
+  event: {
+    title: string;
+    event_type: string | null;
+    guest_count: number | null;
+    start_time: string | null;
+    end_time: string | null;
+  } | null;
 }
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  boda:        "Boda",
+  quinceanero: "Quinceañero",
+  cumpleanos:  "Cumpleaños",
+  bautizo:     "Bautizo",
+  corporativo: "Corporativo",
+  graduacion:  "Graduación",
+  otro:        "Otro",
+};
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -541,22 +561,55 @@ export default function ProviderDashboard() {
                     const clientName = req.profiles?.full_name ?? "Cliente";
                     const date = new Date(req.event_date + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
                     const isPending = req.status === "pending";
+                    const ev = req.event;
+                    const guestCount = ev?.guest_count ?? req.guest_count;
+                    const timeRange  = (ev?.start_time ?? req.start_time)
+                      ? `${ev?.start_time ?? req.start_time}${(ev?.end_time ?? req.end_time) ? ` – ${ev?.end_time ?? req.end_time}` : ""}`
+                      : null;
                     return (
-                      <div key={req.id} className="px-6 py-4 flex items-center gap-4">
+                      <div key={req.id} className="px-6 py-5 flex items-start gap-4">
                         {/* Avatar */}
-                        <div className="w-10 h-10 rounded-full bg-[rgba(59,130,246,0.08)] border border-[rgba(59,130,246,0.2)] flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-[rgba(59,130,246,0.08)] border border-[rgba(59,130,246,0.2)] flex items-center justify-center shrink-0 mt-0.5">
                           <span className="text-[#3b82f6] font-black text-[14px]">{clientName[0]?.toUpperCase()}</span>
                         </div>
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <p className="text-gray-900 text-[14px] font-bold truncate">{clientName}</p>
-                          <p className="text-gray-500 text-[12px]">
-                            {req.services?.title ?? "Servicio"} · {date}
+                          <p className="text-gray-500 text-[12px] mt-0.5">
+                            {req.services?.title ?? "Servicio"}
                           </p>
-                          {req.quoted_price != null && (
-                            <p className="text-[#f39e10] text-[12px] font-semibold mt-0.5">S/ {req.quoted_price.toLocaleString("es-PE")}</p>
+
+                          {/* Event pill */}
+                          {ev && (
+                            <div className="mt-2 inline-flex items-center gap-1.5 bg-[rgba(59,130,246,0.06)] border border-[rgba(59,130,246,0.18)] rounded-lg px-2.5 py-1.5">
+                              <Calendar size={11} className="text-[#3b82f6] shrink-0" />
+                              <span className="text-[#1d4ed8] text-[12px] font-semibold truncate">{ev.title}</span>
+                              {ev.event_type && (
+                                <span className="text-[#3b82f6] text-[11px] opacity-70">· {EVENT_TYPE_LABELS[ev.event_type] ?? ev.event_type}</span>
+                              )}
+                            </div>
                           )}
-                          {req.notes && <p className="text-gray-400 text-[11px] mt-0.5 truncate">{req.notes}</p>}
+
+                          {/* Event details row */}
+                          <div className="flex items-center gap-3 mt-2 flex-wrap">
+                            <span className="text-gray-500 text-[11px] flex items-center gap-1">
+                              <Calendar size={10} className="text-gray-400" />{date}
+                            </span>
+                            {timeRange && (
+                              <span className="text-gray-500 text-[11px] flex items-center gap-1">
+                                <Clock size={10} className="text-gray-400" />{timeRange}
+                              </span>
+                            )}
+                            {guestCount && (
+                              <span className="text-gray-500 text-[11px] flex items-center gap-1">
+                                <Users size={10} className="text-gray-400" />{guestCount} invitados
+                              </span>
+                            )}
+                            {req.quoted_price != null && (
+                              <span className="text-[#f39e10] text-[11px] font-bold">S/ {req.quoted_price.toLocaleString("es-PE")}</span>
+                            )}
+                          </div>
+                          {req.notes && <p className="text-gray-400 text-[11px] mt-1.5 truncate italic">&ldquo;{req.notes}&rdquo;</p>}
                         </div>
                         {/* Status / actions */}
                         {isPending ? (

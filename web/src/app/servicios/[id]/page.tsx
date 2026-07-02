@@ -46,6 +46,11 @@ export default function DetailPage() {
   const [loading,      setLoading]      = useState(true);
 
   // Event details
+  const [eventMode,      setEventMode]      = useState<"new"|"existing">("new");
+  const [userEvents,     setUserEvents]     = useState<Array<{id:string; title:string; event_date:string; event_type:string|null; start_time:string|null; end_time:string|null; guest_count:number|null}>>([]);
+  const [eventsLoaded,   setEventsLoaded]   = useState(false);
+  const [loadingEvents,  setLoadingEvents]  = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState("");
   const [eventName,    setEventName]    = useState("");
   const [eventType,    setEventType]    = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -71,7 +76,37 @@ export default function DetailPage() {
   const clientSecretRef = useRef<string | null>(null);
 
   const today        = new Date().toISOString().split("T")[0];
-  const detailsValid = eventName.trim() !== "" && eventType !== "" && selectedDate !== "";
+  const detailsValid = eventMode === "existing"
+    ? selectedEventId !== "" && selectedDate !== ""
+    : eventName.trim() !== "" && eventType !== "" && selectedDate !== "";
+
+  const loadUserEvents = async () => {
+    if (eventsLoaded || loadingEvents) return;
+    setLoadingEvents(true);
+    try {
+      const res = await fetch("/api/events");
+      if (res.ok) {
+        const { events } = await res.json();
+        setUserEvents(events ?? []);
+      }
+    } finally {
+      setEventsLoaded(true);
+      setLoadingEvents(false);
+    }
+  };
+
+  const onSelectExistingEvent = (eventId: string) => {
+    setSelectedEventId(eventId);
+    const ev = userEvents.find((e) => e.id === eventId);
+    if (ev) {
+      setEventName(ev.title);
+      setEventType(ev.event_type ?? "");
+      setSelectedDate(ev.event_date);
+      setStartTime(ev.start_time ?? "");
+      setEndTime(ev.end_time ?? "");
+      setGuestCount(ev.guest_count ? String(ev.guest_count) : "");
+    }
+  };
 
   useEffect(() => {
     async function fetchService() {
@@ -226,7 +261,7 @@ export default function DetailPage() {
       }
     }
 
-    // Save booking (server creates event + booking atomically)
+    // Save booking (server creates or links event atomically)
     const bookRes = await fetch("/api/bookings", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -235,12 +270,14 @@ export default function DetailPage() {
         event_date:               selectedDate,
         quoted_price:             service!.base_price ?? null,
         client_payment_method_id: paymentMethodId,
-        event_name:               eventName.trim(),
-        event_type:               eventType || null,
-        start_time:               startTime || null,
-        end_time:                 endTime   || null,
-        guest_count:              guestCount ? parseInt(guestCount) : null,
-        notes:                    notes.trim() || null,
+        // existing event → pass event_id; new event → pass event_name + details
+        ...(eventMode === "existing"
+          ? { event_id: selectedEventId }
+          : { event_name: eventName.trim(), event_type: eventType || null }),
+        start_time:  startTime  || null,
+        end_time:    endTime    || null,
+        guest_count: guestCount ? parseInt(guestCount) : null,
+        notes:       notes.trim() || null,
       }),
     });
 
@@ -444,6 +481,86 @@ export default function DetailPage() {
                   <>
                     <p className="text-gray-500 text-[11px] font-semibold uppercase tracking-[0.6px] mb-3">Detalles del evento</p>
 
+                    {/* Event mode toggle */}
+                    {!eventsLoaded ? (
+                      <button
+                        type="button"
+                        onClick={loadUserEvents}
+                        className="w-full text-[12px] text-[#3b82f6] font-semibold mb-4 py-2 rounded-lg border border-[rgba(59,130,246,0.25)] bg-[rgba(59,130,246,0.04)] hover:bg-[rgba(59,130,246,0.08)] transition-colors cursor-pointer"
+                      >
+                        {loadingEvents ? "Cargando eventos..." : "¿Tienes un evento creado? Vincular →"}
+                      </button>
+                    ) : userEvents.length > 0 ? (
+                      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-4">
+                        <button
+                          type="button"
+                          onClick={() => { setEventMode("new"); setSelectedEventId(""); }}
+                          className="flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-all cursor-pointer border-none"
+                          style={{
+                            background: eventMode === "new" ? "#fff" : "transparent",
+                            color:      eventMode === "new" ? "#111827" : "#6b7280",
+                            boxShadow:  eventMode === "new" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                          }}
+                        >
+                          Nuevo evento
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEventMode("existing")}
+                          className="flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-all cursor-pointer border-none"
+                          style={{
+                            background: eventMode === "existing" ? "#fff" : "transparent",
+                            color:      eventMode === "existing" ? "#111827" : "#6b7280",
+                            boxShadow:  eventMode === "existing" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                          }}
+                        >
+                          Evento existente
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-[11px] mb-4">No tienes eventos creados aún.</p>
+                    )}
+
+                    {/* Existing event selector */}
+                    {eventMode === "existing" && (
+                      <>
+                        <label className="text-gray-700 text-[12px] font-semibold block mb-1">
+                          Seleccionar evento <span className="text-[#f39e10]">*</span>
+                        </label>
+                        <select
+                          value={selectedEventId}
+                          onChange={(e) => onSelectExistingEvent(e.target.value)}
+                          className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none mb-3 cursor-pointer"
+                          style={{ ...INPUT_BASE, border: selectedEventId ? "1.5px solid #f39e10" : "1.5px solid #e5e7eb" }}
+                        >
+                          <option value="">Seleccionar evento...</option>
+                          {userEvents.map((ev) => (
+                            <option key={ev.id} value={ev.id}>
+                              {ev.title} · {new Date(ev.event_date + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedEventId && (
+                          <div className="bg-[rgba(59,130,246,0.05)] border border-[rgba(59,130,246,0.18)] rounded-xl px-3.5 py-3 mb-3 text-[12px] text-gray-600">
+                            <p className="font-semibold text-gray-900">{eventName}</p>
+                            <p className="mt-0.5 text-gray-500">{selectedDate && new Date(selectedDate + "T00:00:00").toLocaleDateString("es-PE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
+                            {guestCount && <p className="mt-0.5 text-gray-400">{guestCount} invitados</p>}
+                          </div>
+                        )}
+                        <label className="text-gray-700 text-[12px] font-semibold block mb-1">Notas adicionales</label>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Preferencias para este servicio..."
+                          rows={2}
+                          className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none resize-none mb-4"
+                          style={INPUT_BASE}
+                        />
+                      </>
+                    )}
+
+                    {/* New event fields */}
+                    {eventMode === "new" && (<>
                     <label className="text-gray-700 text-[12px] font-semibold block mb-1">
                       Nombre del evento <span className="text-[#f39e10]">*</span>
                     </label>
@@ -533,6 +650,7 @@ export default function DetailPage() {
                       className="w-full rounded-xl py-2.5 px-3.5 text-[13px] outline-none resize-none mb-4"
                       style={{ ...INPUT_BASE }}
                     />
+                    </>)}
 
                     {bookingError && (
                       <p className="text-red-500 text-[12px] mb-3">{bookingError}</p>
