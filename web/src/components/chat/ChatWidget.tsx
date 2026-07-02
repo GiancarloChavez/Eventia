@@ -9,12 +9,14 @@ import { formatPrice } from "@/lib/data";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface ServiceResult {
-  id:         string;
-  title:      string;
-  base_price: number | null;
-  location:   string | null;
-  cover:      string | null;
-  category:   { name: string; slug: string } | null;
+  id:           string;
+  title:        string;
+  base_price:   number | null;
+  pricing_type: string | null;
+  location:     string | null;
+  cover:        string | null;
+  category:     { name: string; slug: string } | null;
+  provider:     { business_name: string } | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -50,11 +52,11 @@ function ServiceCard({ s }: { s: ServiceResult }) {
         {s.location && (
           <p className="text-gray-400 text-[11px] truncate mt-0.5">{s.location}</p>
         )}
-        {s.category && (
-          <p className="text-gray-500 text-[11px] mt-0.5">{s.category.name}</p>
+        {s.provider && (
+          <p className="text-gray-400 text-[11px] truncate mt-0.5">{s.provider.business_name}</p>
         )}
         <p className="text-[#f39e10] text-[12px] font-black mt-1">
-          {formatPrice(s.base_price)}
+          {s.pricing_type === "quote" ? "Cotización" : formatPrice(s.base_price)}
         </p>
       </div>
       <ExternalLink size={13} className="text-gray-300 group-hover:text-[#f39e10] shrink-0 transition-colors" />
@@ -225,8 +227,8 @@ export function ChatWidget() {
                 <div className="flex-1 min-w-0">
                   <p className="text-red-700 text-[12px] font-semibold">Eva no puede responder ahora</p>
                   <p className="text-red-500 text-[11px] mt-0.5">
-                    {error.message.includes("503") || error.message.includes("GOOGLE")
-                      ? "El chatbot no está configurado (falta GOOGLE_GENERATIVE_AI_API_KEY)."
+                    {error.message.includes("503")
+                      ? "El chatbot no está configurado (falta ANTHROPIC_API_KEY)."
                       : "Ocurrió un error. Intenta de nuevo."}
                   </p>
                 </div>

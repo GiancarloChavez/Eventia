@@ -188,7 +188,7 @@ export default function RevisionPage() {
 
     const { error: dbError } = await getSupabase()
       .from("providers")
-      .update({ status: "approved", onboarding_step: 5 })
+      .update({ status: "pending", onboarding_step: 5 })
       .eq("id", provider.id);
 
     if (dbError) {

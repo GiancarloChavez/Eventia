@@ -38,3 +38,5 @@ yarn-error.log*
 # Design bundle (development artifact)
 design_bundle/
 design_prototype.html
+
+.vercel

@@ -3,30 +3,28 @@ import { streamText, tool, stepCountIs, convertToModelMessages } from "ai";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 
-const SYSTEM = `Eres Eva, la asistente virtual de Eventia, el marketplace de eventos en Iquitos, Perú.
-Tu misión es ayudar a los usuarios a encontrar los servicios perfectos para su evento.
+const SYSTEM = `Eres Eva, la asistente virtual de Eventia — el marketplace de servicios para eventos en Iquitos, Perú.
 
-Categorías disponibles:
-- local: Salones y espacios para eventos
-- fotografia: Fotógrafos y videógrafos
-- musica: DJs, orquestas y grupos musicales
-- decoracion: Decoradores de eventos
+Puedes ayudar con dos cosas:
+1. Buscar servicios reales del catálogo (locales, fotografía, música, decoración)
+2. Responder preguntas generales sobre organización de eventos (presupuestos, consejos, diferencias entre servicios, protocolo para bodas o quinceañeros, etc.)
 
-Flujo de conversación:
-1. Saluda brevemente y pregunta qué tipo de evento planean (boda, quinceaños, graduación, cumpleaños, corporativo)
-2. Pregunta la fecha aproximada
-3. Pregunta cuántas personas asistirán (solo si buscan local)
-4. Pregunta el presupuesto aproximado para el servicio que buscan
-5. Pregunta qué tipo de servicio necesitan si no lo han mencionado
-6. Cuando tengas suficiente información, usa la herramienta searchServices
-7. Presenta los resultados de forma amigable destacando lo más relevante
+Tu personalidad:
+- Cálida, cercana y proactiva — nada de respuestas robóticas o formuladas
+- Español natural, como hablaría una organizadora de eventos en Iquitos
+- Si el usuario ya da suficiente información, buscas directamente sin hacer preguntas de más
+- Si falta información para buscar, preguntas lo necesario — máximo una o dos cosas a la vez
+- Para preguntas generales, respondes con confianza y criterio propio — no necesitas buscar en la base de datos
 
-Reglas:
-- Habla siempre en español, de forma amigable y concisa
-- Haz máximo una o dos preguntas por mensaje
-- Si el usuario ya menciona varios datos, reúnelos y busca directamente
-- Si no hay resultados, sugiere ampliar el presupuesto o cambiar categoría
-- Nunca inventes servicios que no aparezcan en los resultados`;
+Cuándo buscar servicios:
+- Cuando el usuario quiere contratar, ver opciones o conocer precios
+- Puedes hacer búsquedas amplias si tienes poca información — mejor mostrar opciones que no encontrar nada
+- Si hay resultados, preséntalos con entusiasmo y explica por qué son buena opción
+- Si no hay resultados, sugiere ampliar presupuesto, cambiar categoría o buscar sin filtros
+
+Categorías disponibles: local, fotografia, musica, decoracion
+
+Regla importante: nunca inventes servicios — solo menciona lo que aparezca en los resultados.`;
 
 const db = () =>
   createClient(
@@ -36,7 +34,6 @@ const db = () =>
 
 export async function POST(req: Request) {
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-    console.error("[Eva] GOOGLE_GENERATIVE_AI_API_KEY no está configurada");
     return Response.json(
       { error: "Chatbot no configurado. Agrega GOOGLE_GENERATIVE_AI_API_KEY a .env.local" },
       { status: 503 }
@@ -51,41 +48,38 @@ export async function POST(req: Request) {
       model: google("gemini-2.0-flash"),
       system: SYSTEM,
       messages: modelMessages,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(10),
       tools: {
         searchServices: tool({
-          description: "Busca servicios en el catálogo de Eventia según los criterios recopilados del usuario",
+          description: "Busca servicios disponibles en el catálogo de Eventia según los criterios del usuario",
           inputSchema: z.object({
             category: z
               .enum(["local", "fotografia", "musica", "decoracion"])
               .optional()
-              .describe("Categoría del servicio a buscar"),
+              .describe("Categoría del servicio"),
             maxPrice: z
               .number()
               .optional()
-              .describe("Presupuesto máximo del usuario en soles peruanos"),
-            eventType: z
+              .describe("Presupuesto máximo en soles peruanos"),
+            keyword: z
               .string()
               .optional()
-              .describe("Tipo de evento: boda, quinceaños, graduación, etc."),
+              .describe("Término libre para buscar en el nombre del servicio"),
           }),
-          execute: async ({ category, maxPrice }: { category?: "local" | "fotografia" | "musica" | "decoracion"; maxPrice?: number; eventType?: string }) => {
+          execute: async ({ category, maxPrice, keyword }) => {
             const supabase = db();
 
             let query = supabase
               .from("services")
               .select(`
-                id,
-                title,
-                description,
-                base_price,
-                location,
+                id, title, description, base_price, pricing_type, location,
+                provider:providers(business_name),
                 category:service_categories(name, slug),
                 images:service_images(url, is_cover, display_order)
               `)
               .eq("status", "active")
               .order("base_price", { ascending: true })
-              .limit(4);
+              .limit(5);
 
             if (category) {
               const { data: cat } = await supabase
@@ -93,12 +87,11 @@ export async function POST(req: Request) {
                 .select("id")
                 .eq("slug", category)
                 .single();
-              if (cat) query = query.eq("category_id", cat.id);
+              if (cat) query = query.eq("category_id", (cat as { id: number }).id);
             }
 
-            if (maxPrice) {
-              query = query.lte("base_price", maxPrice);
-            }
+            if (maxPrice)  query = query.lte("base_price", maxPrice);
+            if (keyword)   query = query.ilike("title", `%${keyword}%`);
 
             const { data } = await query;
 
@@ -107,11 +100,13 @@ export async function POST(req: Request) {
               const sorted = [...imgs].sort((a, b) => a.display_order - b.display_order);
               const cover = sorted.find((i) => i.is_cover)?.url ?? sorted[0]?.url ?? null;
               return {
-                id:         s.id,
-                title:      s.title,
-                base_price: s.base_price,
-                location:   s.location,
-                category:   s.category,
+                id:           s.id,
+                title:        s.title,
+                base_price:   s.base_price,
+                pricing_type: s.pricing_type,
+                location:     s.location,
+                category:     s.category,
+                provider:     s.provider,
                 cover,
               };
             });
@@ -125,7 +120,7 @@ export async function POST(req: Request) {
     return result.toUIMessageStreamResponse();
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido";
-    console.error("[Eva] Error en streamText:", message);
+    console.error("[Eva] Error:", message);
     return Response.json({ error: message }, { status: 500 });
   }
 }
