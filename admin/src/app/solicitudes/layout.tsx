@@ -1,24 +1,7 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { createSupabaseServer } from "@/lib/supabase-server";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { AdminNavbar } from "@/components/admin-navbar";
 
-export default async function SolicitudesLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const supabase = createSupabaseServer(cookieStore);
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, full_name")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") redirect("/login");
-
+export default function SolicitudesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -32,18 +15,6 @@ export default async function SolicitudesLayout({ children }: { children: React.
             </div>
             <div className="h-5 w-px bg-gray-200" />
             <AdminNavbar />
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-400 text-[13px]">{profile?.full_name ?? user.email}</span>
-            <form action="/api/auth/signout" method="POST">
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 text-gray-400 hover:text-gray-700 text-[13px] transition-colors cursor-pointer border-none bg-transparent"
-              >
-                <LogOut size={13} />
-                Salir
-              </button>
-            </form>
           </div>
         </div>
       </header>
