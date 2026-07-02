@@ -1,4 +1,4 @@
-import { google } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { streamText, tool, stepCountIs, convertToModelMessages } from "ai";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
@@ -33,19 +33,21 @@ const db = () =>
   );
 
 export async function POST(req: Request) {
-  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return Response.json(
-      { error: "Chatbot no configurado. Agrega GOOGLE_GENERATIVE_AI_API_KEY a .env.local" },
+      { error: "Chatbot no configurado. Agrega GROQ_API_KEY a .env.local" },
       { status: 503 }
     );
   }
+
+  const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
 
   try {
     const body = await req.json();
     const modelMessages = await convertToModelMessages(body.messages ?? []);
 
     const result = streamText({
-      model: google("gemini-2.0-flash"),
+      model: groq("llama-3.3-70b-versatile"),
       system: SYSTEM,
       messages: modelMessages,
       stopWhen: stepCountIs(10),
